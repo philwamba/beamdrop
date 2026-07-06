@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.AttachFile
@@ -41,7 +42,6 @@ import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -476,7 +476,7 @@ private fun HomeScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(onClick = onSendText, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Outlined.Send, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
                         Text("Send text")
                     }
@@ -1220,7 +1220,7 @@ private fun SendTextScreen(
                             enabled = selectedPeer != null && text.isNotBlank(),
                             modifier = Modifier.weight(1f),
                         ) {
-                            Icon(Icons.Outlined.Send, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                             Spacer(Modifier.size(8.dp))
                             Text("Send text")
                         }
@@ -1325,7 +1325,7 @@ private fun SendFileScreen(
                         enabled = selectedUri != null && selectedPeer != null,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(Icons.Outlined.Send, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
                         Text("Send selected file")
                     }
@@ -1616,7 +1616,7 @@ private fun HistoryRow(record: TransferHistoryRecord) {
                 TransferStatus.Completed -> Icons.Outlined.CheckCircle
                 TransferStatus.Cancelled -> Icons.Outlined.StopCircle
                 TransferStatus.Rejected, TransferStatus.Failed, TransferStatus.Corrupted, TransferStatus.Incomplete -> Icons.Outlined.Block
-                else -> Icons.Outlined.Send
+                else -> Icons.AutoMirrored.Outlined.Send
             },
             contentDescription = null,
             tint = when (record.status) {
