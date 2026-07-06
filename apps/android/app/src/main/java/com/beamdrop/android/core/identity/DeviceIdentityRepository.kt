@@ -10,7 +10,6 @@ import com.beamdrop.android.core.pairing.DevicePlatform
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
-import java.security.SecureRandom
 import java.security.spec.ECGenParameterSpec
 import java.util.UUID
 
@@ -33,9 +32,7 @@ class DeviceIdentityRepository(
     }
 
     private fun generateDeviceId(): String {
-        val idBytes = ByteArray(16)
-        SecureRandom().nextBytes(idBytes)
-        val deviceId = UUID.nameUUIDFromBytes(idBytes).toString()
+        val deviceId = UUID.randomUUID().toString()
         preferences.edit().putString(KEY_DEVICE_ID, deviceId).apply()
         return deviceId
     }

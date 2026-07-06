@@ -31,8 +31,10 @@ object TransferEnvelopeCodec {
         val payload = json.getJSONObject("payloadMetadata")
         val sizeBytes = payload.getLong("sizeBytes")
         val chunkSize = payload.optLong("chunkSize", DEFAULT_CHUNK_SIZE_BYTES)
+        val sha256 = payload.optString("sha256").takeUnless(String::isBlank)
         require(sizeBytes >= 0) { "Transfer size must not be negative." }
         require(chunkSize in 1..Int.MAX_VALUE) { "Transfer chunk size is invalid." }
+        require(sha256 != null && sha256.matches(Regex("^[a-fA-F0-9]{64}$"))) { "Transfer is missing a valid final SHA-256." }
         val totalChunks = payload.optLong("totalChunks", ChunkCalculator.totalChunks(sizeBytes, chunkSize))
         require(totalChunks == ChunkCalculator.totalChunks(sizeBytes, chunkSize)) { "Transfer chunk metadata does not match payload size." }
         return TransferMetadata(
@@ -46,7 +48,7 @@ object TransferEnvelopeCodec {
             sizeBytes = sizeBytes,
             chunkSizeBytes = chunkSize,
             totalChunks = totalChunks,
-            sha256 = payload.optString("sha256").takeUnless(String::isBlank),
+            sha256 = sha256,
             createdAtEpochMillis = Instant.parse(json.getString("createdAt")).toEpochMilli(),
         )
     }

@@ -233,6 +233,7 @@ private fun BeamDropApp(
     var progress by remember { mutableStateOf<TransferProgress?>(null) }
     var refreshPairing by remember { mutableIntStateOf(0) }
     var selectedDevice by remember { mutableStateOf<TrustedPeer?>(null) }
+    var clipboardMessage by remember { mutableStateOf<String?>(null) }
 
     fun reloadPeers() {
         peers = trustedPeerRepository.listPeers()
@@ -247,6 +248,7 @@ private fun BeamDropApp(
             identity = identity,
             peers = peers,
             history = history,
+            clipboardMessage = clipboardMessage,
             onPair = { screen = Screen.Pair },
             onScan = { screen = Screen.Scan },
             onNearby = { screen = Screen.Nearby },
@@ -263,9 +265,14 @@ private fun BeamDropApp(
             },
             onSendClipboard = {
                 peers.firstTrustedTransferPeer()?.let { peer ->
-                    clipboardSender.sendCurrentClipboardText(peer)
+                    clipboardMessage = when (clipboardSender.sendCurrentClipboardText(peer)) {
+                        is ClipboardSendResult.Sent -> "Clipboard sent."
+                        ClipboardSendResult.Empty -> "Clipboard is empty."
+                        ClipboardSendResult.Unsupported -> "Clipboard does not contain supported text."
+                        ClipboardSendResult.SensitiveBlocked -> "Clipboard looks sensitive and was not sent."
+                    }
                     reloadHistory()
-                }
+                } ?: run { clipboardMessage = "Pair a trusted device before sending clipboard text." }
             },
             onNameSaved = {
                 deviceNameRepository.setDeviceName(it)
@@ -406,6 +413,7 @@ private fun HomeScreen(
     identity: DeviceIdentity,
     peers: List<TrustedPeer>,
     history: List<TransferHistoryRecord>,
+    clipboardMessage: String?,
     onPair: () -> Unit,
     onScan: () -> Unit,
     onNearby: () -> Unit,
@@ -491,6 +499,14 @@ private fun HomeScreen(
                         Icon(Icons.Outlined.History, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
                         Text("History")
+                    }
+                }
+            }
+
+            clipboardMessage?.let { message ->
+                item {
+                    SectionSurface {
+                        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

@@ -11,12 +11,13 @@ class AppPrivateReceiveTargetFactory(
     private val context: Context,
 ) : ReceiveTargetFactory {
     override fun create(metadata: TransferMetadata): ReceiveTarget {
-        val safeName = metadata.fileName.safeFileName()
+        val safeName = SafeFileName.requireSafe(metadata.fileName)
         val receiveDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "BeamDrop/Received")
         val stagingDir = File(context.cacheDir, "beamdrop-staging").apply { mkdirs() }
         receiveDir.mkdirs()
         val stagingFile = File(stagingDir, "${metadata.transferId}.part")
         val destination = uniqueDestination(receiveDir, safeName)
+        require(destination.isInside(receiveDir)) { "Received file path escapes the BeamDrop save directory." }
         return AppPrivateReceiveTarget(stagingFile, destination)
     }
 
@@ -57,8 +58,20 @@ private class AppPrivateReceiveTarget(
     }
 }
 
-private fun String.safeFileName(): String {
-    val cleaned = replace(Regex("[/\\\\:\\u0000-\\u001F]"), "_").trim()
-    return cleaned.takeIf { it.isNotBlank() }?.take(180) ?: "BeamDrop file"
+object SafeFileName {
+    private val disallowed = Regex("[/\\\\:\\u0000-\\u001F]")
+
+    fun requireSafe(fileName: String): String {
+        val trimmed = fileName.trim()
+        require(trimmed.isNotBlank()) { "File name is required." }
+        require(trimmed != "." && trimmed != "..") { "Path traversal file names are not allowed." }
+        require(!disallowed.containsMatchIn(trimmed)) { "File name must not contain path separators or control characters." }
+        return trimmed.take(180)
+    }
 }
 
+private fun File.isInside(directory: File): Boolean {
+    val root = directory.canonicalFile
+    val child = canonicalFile
+    return child.path == root.path || child.path.startsWith(root.path + File.separator)
+}
