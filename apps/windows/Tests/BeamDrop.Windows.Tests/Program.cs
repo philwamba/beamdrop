@@ -21,9 +21,12 @@ internal sealed class WindowsTests
         TestPairingQrCompatibility();
         TestTransferEnvelopeCodec();
         TestTransferEnvelopeDecodesAndroidEnvelope();
+        TestTamperedTransferEnvelopeRejected();
         await TestTransferManagerSendText();
         await TestReceiveFileHashVerification();
+        await TestReceiveMissingHashCannotComplete();
         TestTrustedPeerRejection();
+        TestPathTraversalFileNameRejected();
         await TestClipboardPolicy();
         TestResumePlanning();
         Console.WriteLine("BeamDrop Windows tests passed.");
@@ -144,6 +147,50 @@ internal sealed class WindowsTests
         AssertEqual(BeamDropProtocol.DefaultChunkSizeBytes, decoded.ChunkSizeBytes, "android envelope chunk size");
     }
 
+    private static void TestTamperedTransferEnvelopeRejected()
+    {
+        AssertThrows<InvalidOperationException>(() => TransferEnvelopeCodec.Decode(
+            """
+            {
+              "protocolVersion": "1.0",
+              "transferId": "tx-tampered",
+              "transferType": "FILE",
+              "senderDeviceId": "bd-android-01",
+              "senderPublicKey": "android-public-key",
+              "receiverDeviceId": "bd-windows-01",
+              "createdAt": "2026-07-06T14:27:18Z",
+              "payloadMetadata": {
+                "fileName": "notes.txt",
+                "mimeType": "text/plain",
+                "sizeBytes": 5,
+                "chunkSize": 4194304,
+                "totalChunks": 99,
+                "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+              }
+            }
+            """), "tampered chunk metadata rejected");
+
+        AssertThrows<InvalidOperationException>(() => TransferEnvelopeCodec.Decode(
+            """
+            {
+              "protocolVersion": "1.0",
+              "transferId": "tx-missing-hash",
+              "transferType": "TEXT",
+              "senderDeviceId": "bd-android-01",
+              "senderPublicKey": "android-public-key",
+              "receiverDeviceId": "bd-windows-01",
+              "createdAt": "2026-07-06T14:27:18Z",
+              "payloadMetadata": {
+                "fileName": "Text",
+                "mimeType": "text/plain",
+                "sizeBytes": 5,
+                "chunkSize": 4194304,
+                "totalChunks": 1
+              }
+            }
+            """), "missing final hash rejected");
+    }
+
     private static async Task TestTransferManagerSendText()
     {
         var fixture = Fixture(trustState: TrustState.Trusted);
@@ -168,6 +215,32 @@ internal sealed class WindowsTests
         AssertEqual(TransferStatus.Completed, record.Status, "receive file completed");
     }
 
+    private static async Task TestReceiveMissingHashCannotComplete()
+    {
+        var fixture = Fixture(trustState: TrustState.Trusted, approval: ReceiveDecision.Accept);
+        var payload = Encoding.UTF8.GetBytes("file payload");
+        var manifest = new TransferManifest(
+            TransferId: "tx-no-hash",
+            Kind: TransferKind.File,
+            SenderDeviceId: PeerId,
+            ReceiverDeviceId: "this-windows-device",
+            FileName: "notes.txt",
+            MimeType: "text/plain",
+            SizeBytes: payload.Length,
+            ChunkSizeBytes: BeamDropProtocol.DefaultChunkSizeBytes,
+            TotalChunks: ChunkCalculator.TotalChunks(payload.Length),
+            Sha256: null,
+            CreatedAt: DateTimeOffset.UtcNow,
+            SenderPublicKey: PublicKey);
+
+        var record = await fixture.Manager.ReceiveFileAsync(
+            new IncomingTransferRequest(manifest, new TransferPeer(PeerId, "Laptop", PublicKey, AutoAcceptTransfers: true)),
+            new MemoryStream(payload),
+            CancellationToken.None);
+
+        AssertEqual(TransferStatus.Corrupted, record.Status, "missing hash cannot complete");
+    }
+
     private static void TestTrustedPeerRejection()
     {
         var unknown = Fixture(trustState: null);
@@ -178,6 +251,15 @@ internal sealed class WindowsTests
 
         var wrongKey = Fixture(trustState: TrustState.Trusted);
         AssertThrows<UnknownPeerRejectedException>(() => wrongKey.Repository.RequireTrusted(PeerId, "wrong-public-key"), "mismatched trusted peer key rejected");
+    }
+
+    private static void TestPathTraversalFileNameRejected()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "beamdrop-tests", Guid.NewGuid().ToString("N"));
+        var factory = new DownloadsReceiveTargetFactory(root, Path.Combine(root, "staging"));
+        var manifest = Manifest(size: 1, sha: new string('f', 64)) with { FileName = "..\\secret.txt" };
+
+        AssertThrows<InvalidOperationException>(() => factory.Create(manifest), "path traversal file name rejected");
     }
 
     private static async Task TestClipboardPolicy()

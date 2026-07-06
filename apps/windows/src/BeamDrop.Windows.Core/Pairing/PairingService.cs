@@ -65,7 +65,10 @@ public sealed class PairingService
         if (payload.ProtocolVersion != BeamDropProtocol.ProtocolVersion) throw new InvalidOperationException("Unsupported BeamDrop protocol version.");
         if (payload.ServiceName != BeamDropProtocol.ServiceName) throw new InvalidOperationException("QR payload is not for BeamDrop.");
         if (payload.ExpiresAtEpochMillis <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) throw new InvalidOperationException("Pairing QR payload expired.");
+        if (string.IsNullOrWhiteSpace(payload.PairingSessionId)) throw new InvalidOperationException("Pairing payload missing session id.");
         if (string.IsNullOrWhiteSpace(payload.DeviceId)) throw new InvalidOperationException("Pairing payload missing device id.");
+        if (string.IsNullOrWhiteSpace(payload.DeviceName)) throw new InvalidOperationException("Pairing payload missing device name.");
         if (string.IsNullOrWhiteSpace(payload.PublicKey)) throw new InvalidOperationException("Pairing payload missing public key.");
+        if (payload.Endpoint?.Port is { } port && port is < 1 or > 65535) throw new InvalidOperationException("Pairing payload endpoint port is invalid.");
     }
 }

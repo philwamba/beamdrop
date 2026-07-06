@@ -46,14 +46,45 @@ public sealed class DownloadsReceiveTargetFactory : IReceiveTargetFactory
         var safeName = MakeSafeFileName(manifest.FileName);
         var staging = Path.Combine(_stagingPath, $"{manifest.TransferId}.part");
         var destination = UniquePath(Path.Combine(_downloadsPath, safeName));
+        EnsureInsideDirectory(_downloadsPath, destination);
         return new FileReceiveTarget(staging, destination);
     }
 
     private static string MakeSafeFileName(string fileName)
     {
-        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
-        var safe = new string(fileName.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
-        return string.IsNullOrWhiteSpace(safe) ? "BeamDrop file" : safe;
+        var trimmed = fileName.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            throw new InvalidOperationException("File name is required.");
+        }
+        if (trimmed is "." or "..")
+        {
+            throw new InvalidOperationException("Path traversal file names are not allowed.");
+        }
+        if (Path.IsPathFullyQualified(trimmed) ||
+            trimmed.Contains(Path.DirectorySeparatorChar) ||
+            trimmed.Contains(Path.AltDirectorySeparatorChar) ||
+            trimmed.Contains('/') ||
+            trimmed.Contains('\\') ||
+            Path.GetFileName(trimmed) != trimmed)
+        {
+            throw new InvalidOperationException("File name must not contain path separators.");
+        }
+        if (trimmed.Any(ch => Path.GetInvalidFileNameChars().Contains(ch) || "<>:\"|?*".Contains(ch) || char.IsControl(ch)))
+        {
+            throw new InvalidOperationException("File name contains invalid characters.");
+        }
+        return trimmed.Length > 180 ? trimmed[..180] : trimmed;
+    }
+
+    private static void EnsureInsideDirectory(string directory, string candidate)
+    {
+        var root = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var child = Path.GetFullPath(candidate);
+        if (!child.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Received file path escapes the BeamDrop save directory.");
+        }
     }
 
     private static string UniquePath(string path)

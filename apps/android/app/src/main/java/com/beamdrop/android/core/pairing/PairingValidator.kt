@@ -20,10 +20,14 @@ class PairingValidator(
         if (payload.isExpired(clock.instant())) {
             return PairingValidationResult.Invalid(PairingError.QrExpired)
         }
-        if (payload.deviceId.isBlank() || payload.publicKey.isBlank() || payload.displayName.isBlank()) {
+        if (payload.deviceId.isBlank() || payload.publicKey.isBlank() || payload.displayName.isBlank() || payload.pairingSessionId.isBlank()) {
             return PairingValidationResult.Invalid(PairingError.QrInvalid)
         }
         if (payload.platform == DevicePlatform.Unknown) {
+            return PairingValidationResult.Invalid(PairingError.QrInvalid)
+        }
+        val endpointPort = payload.endpoint?.port
+        if (endpointPort != null && endpointPort !in 1..65535) {
             return PairingValidationResult.Invalid(PairingError.QrInvalid)
         }
 

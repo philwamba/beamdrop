@@ -56,6 +56,11 @@ public static class TransferEnvelopeCodec
         {
             throw new InvalidOperationException("Transfer chunk metadata does not match payload size.");
         }
+        var sha256 = payload.TryGetProperty("sha256", out var shaValue) ? shaValue.GetString() : null;
+        if (!IsSha256Hex(sha256))
+        {
+            throw new InvalidOperationException("Transfer is missing a valid final SHA-256.");
+        }
         return new TransferManifest(
             TransferId: root.GetProperty("transferId").GetString() ?? throw new InvalidOperationException("Missing transfer id."),
             Kind: FromWireTransferType(root.GetProperty("transferType").GetString() ?? ""),
@@ -66,10 +71,13 @@ public static class TransferEnvelopeCodec
             SizeBytes: sizeBytes,
             ChunkSizeBytes: chunkSize,
             TotalChunks: totalChunks,
-            Sha256: payload.TryGetProperty("sha256", out var shaValue) ? shaValue.GetString() : null,
+            Sha256: sha256,
             CreatedAt: DateTimeOffset.Parse(root.GetProperty("createdAt").GetString() ?? DateTimeOffset.UtcNow.ToString("O")),
             SenderPublicKey: root.TryGetProperty("senderPublicKey", out var publicKeyValue) ? publicKeyValue.GetString() : null);
     }
+
+    private static bool IsSha256Hex(string? value) =>
+        value is { Length: 64 } && value.All(Uri.IsHexDigit);
 
     public static string ToWireTransferType(TransferKind kind) => kind switch
     {

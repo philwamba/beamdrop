@@ -6,6 +6,7 @@ import com.beamdrop.android.core.pairing.TrustedPeer
 import com.beamdrop.android.core.storage.InMemoryTrustedPeerStore
 import com.beamdrop.android.core.storage.TrustedPeerRepository
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -67,6 +68,47 @@ class TransferManagerTest {
     }
 
     @Test
+    fun tamperedTransferEnvelopeIsRejected() {
+        val metadata = metadata(
+            type = AndroidTransferType.FILE,
+            fileName = "demo.txt",
+            sizeBytes = 8,
+            sha256 = "f".repeat(64),
+        )
+        val tampered = TransferEnvelopeCodec.encode(metadata).replace("\"totalChunks\":1", "\"totalChunks\":99")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            TransferEnvelopeCodec.decode(tampered)
+        }
+    }
+
+    @Test
+    fun transferEnvelopeWithoutFinalHashIsRejected() {
+        val raw = """
+            {
+              "protocolVersion": "1.0",
+              "transferId": "tx-missing-hash",
+              "transferType": "TEXT",
+              "senderDeviceId": "bd-android-sender",
+              "senderPublicKey": "public-key",
+              "receiverDeviceId": "bd-windows-receiver",
+              "createdAt": "2026-07-06T14:27:18Z",
+              "payloadMetadata": {
+                "fileName": "Text",
+                "mimeType": "text/plain",
+                "sizeBytes": 5,
+                "chunkSize": 4194304,
+                "totalChunks": 1
+              }
+            }
+        """.trimIndent()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            TransferEnvelopeCodec.decode(raw)
+        }
+    }
+
+    @Test
     fun progressCalculationReturnsPercent() {
         assertEquals(42, ProgressCalculator.percent(bytesTransferred = 42, totalBytes = 100))
         assertEquals(100, ProgressCalculator.percent(bytesTransferred = 125, totalBytes = 100))
@@ -117,6 +159,26 @@ class TransferManagerTest {
                     fileName = "notes.txt",
                     sizeBytes = 11,
                     sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                ),
+                sender = trustedTransferPeer(autoAccept = true),
+            ),
+            input = ByteArrayInputStream("hello world".toByteArray()),
+        )
+
+        assertEquals(TransferStatus.Corrupted, record.status)
+    }
+
+    @Test
+    fun receiveWithoutHashVerificationCannotComplete() {
+        val manager = testManager(trustedPeer(TrustState.Trusted))
+
+        val record = manager.receiveFile(
+            request = IncomingTransferRequest(
+                metadata = metadata(
+                    type = AndroidTransferType.FILE,
+                    fileName = "notes.txt",
+                    sizeBytes = 11,
+                    sha256 = null,
                 ),
                 sender = trustedTransferPeer(autoAccept = true),
             ),

@@ -119,9 +119,9 @@ public sealed class TransferManager
                 }
             }
 
-            if (request.Manifest.Sha256 is null)
+            if (string.IsNullOrWhiteSpace(request.Manifest.Sha256))
             {
-                throw new InvalidOperationException("Missing final SHA-256.");
+                throw new HashMismatchException(request.Manifest.TransferId);
             }
 
             await using (var verifyStream = target.OpenReadForVerification())
