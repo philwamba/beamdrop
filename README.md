@@ -2,6 +2,14 @@
 
 Native private device transfer for Android, iPhone, Windows, and macOS.
 
+[![Project status: MVP development](https://img.shields.io/badge/status-MVP%20development-2563eb)](#current-status)
+[![Release: not published](https://img.shields.io/badge/release-not%20published-6b7280)](#downloads)
+[![Protocol: 1.0](https://img.shields.io/badge/protocol-1.0-059669)](protocol/beamdrop-protocol/compatibility-matrix.md)
+[![Native only](https://img.shields.io/badge/native-only-111827)](#supported-platforms)
+[![Local first](https://img.shields.io/badge/local--first-no%20cloud%20upload-0f766e)](#development-principles)
+[![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iPhone%20%7C%20macOS%20%7C%20Windows-7c3aed)](#supported-platforms)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 BeamDrop is a native, private cross-device transfer app for trusted personal devices.
 It is designed for moving files, folders, text, links, screenshots, and clipboard
 content between Android, iPhone, Windows, and macOS without treating the cloud as
@@ -23,6 +31,17 @@ content to a cloud storage service for the local MVP.
 
 BeamDrop is not an Electron, Tauri, Flutter, React Native, Ionic, Cordova, web
 wrapper, or browser-only application.
+
+## Status
+
+| Area | Status |
+| --- | --- |
+| Android | ![Android: MVP transfer work](https://img.shields.io/badge/Android-MVP%20transfer%20work-3ddc84) |
+| iPhone | ![iPhone: planned](https://img.shields.io/badge/iPhone-planned-6b7280) |
+| macOS | ![macOS: native foundation](https://img.shields.io/badge/macOS-native%20foundation-111827) |
+| Windows | ![Windows: MVP transfer work](https://img.shields.io/badge/Windows-MVP%20transfer%20work-0078d4) |
+| Shared Rust core | ![Rust core: foundation](https://img.shields.io/badge/Rust%20core-foundation-b7410e) |
+| Public downloads | ![Downloads: not published](https://img.shields.io/badge/downloads-not%20published-6b7280) |
 
 ## Downloads
 
