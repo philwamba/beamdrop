@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: beamdrop
+      POSTGRES_PASSWORD: beamdrop
+      POSTGRES_DB: beamdrop
+    ports:
+      - "54329:5432"
+    volumes:
+      - beamdrop-postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6389:6379"
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: beamdrop
+      MINIO_ROOT_PASSWORD: beamdrop-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - beamdrop-minio:/data
+
+  signaling:
+    build:
+      context: ./beamdrop-signaling
+    env_file:
+      - ./beamdrop-signaling/.env.example
+    environment:
+      DATABASE_URL: postgres://beamdrop:beamdrop@postgres:5432/beamdrop
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4010:4010"
+    depends_on:
+      - postgres
+      - redis
+
+  relay:
+    build:
+      context: ./beamdrop-relay
+    env_file:
+      - ./beamdrop-relay/.env.example
+    environment:
+      DATABASE_URL: postgres://beamdrop:beamdrop@postgres:5432/beamdrop
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: beamdrop-relay
+      S3_ACCESS_KEY_ID: beamdrop
+      S3_SECRET_ACCESS_KEY: beamdrop-secret
+    ports:
+      - "4020:4020"
+    depends_on:
+      - postgres
+      - redis
+      - minio
+
+volumes:
+  beamdrop-postgres:
+  beamdrop-minio:
