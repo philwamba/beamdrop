@@ -42,6 +42,8 @@ BeamDrop should minimize stored sensitive data:
 - Store transfer history metadata without file contents.
 - Allow users to clear transfer history.
 - Do not upload content for local transfers.
+- Do not include clipboard text, file contents, private keys, relay tokens, or
+  decrypted payload metadata in logs or crash reports.
 
 ## Clipboard Privacy
 
@@ -59,6 +61,12 @@ must disclose:
 - When monitoring is active.
 - Whether clipboard content is stored.
 - How users pause or disable it.
+
+BeamDrop should block sensitive-looking clipboard content from automatic or
+tray-initiated sends by default. This includes password-like, token-like,
+private-key-like, and card-number-like text. The policy should disclose that
+this protection is heuristic and is not a guarantee that all sensitive text will
+be detected.
 
 ## Device Trust Data
 
@@ -83,9 +91,11 @@ If optional servers are added, document:
 - Whether the server is relay, signaling, or both.
 - Whether login is required for that feature.
 - What metadata is processed.
-- Whether file content is end-to-end encrypted.
+- Whether file content is end-to-end encrypted and that relay upload must be
+  client-side encrypted before the server receives it.
 - Retention duration for logs.
 - Whether relay is optional.
+- How quickly relay tokens and encrypted temporary blobs expire.
 
 For MVP, optional remote relay must not be required.
 

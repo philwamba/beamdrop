@@ -36,6 +36,8 @@ network transfer.
 - Clipboard workflows match platform restrictions.
 - All large file transfers are chunked.
 - File hash verification is required.
+- Transfers cannot be marked complete before hash verification succeeds.
+- Missing or malformed transfer hashes are rejected.
 - Transfer resume works for large files.
 - Failed hash verification does not expose completed files.
 
@@ -46,9 +48,13 @@ network transfer.
 - Revoked devices are blocked.
 - Unknown senders require approval.
 - Transfer sessions are encrypted.
-- Manifest validation rejects unsafe paths.
+- Manifest validation rejects unsafe paths, traversal filenames, malformed
+  hashes, negative sizes, and inconsistent chunk metadata.
 - Staged partial files are protected from accidental exposure.
 - Logs do not contain file contents or clipboard contents.
+- Clipboard auto/tray send blocks sensitive-looking content by default.
+- Crash reports exclude clipboard text, file contents, local file paths where
+  practical, private keys, relay tokens, and decrypted metadata.
 
 Optional server release gates:
 
@@ -122,7 +128,9 @@ Do not release if:
 - Unknown devices can send without approval.
 - Large files are not chunked.
 - File hash verification can be skipped.
+- Transfer sessions are not encrypted.
 - Large transfer resume is missing.
+- Receive filenames can escape the selected save directory.
 - iPhone clipboard behavior implies silent background monitoring.
 - Android clipboard behavior violates OS restrictions.
 - Relay or signaling is required for same-network local transfer.

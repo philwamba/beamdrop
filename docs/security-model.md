@@ -54,13 +54,25 @@ Pairing should protect against:
 
 ## Transfer Security
 
-All transfer sessions must use authenticated encryption. File hash verification
-is required. Large files must be chunked and resumable without trusting partial
-data blindly.
+All production transfer sessions must use authenticated encryption. The current
+local MVP protocol enforces explicit trust, manifest validation, chunking, and
+final SHA-256 verification, but unauthenticated local TCP payload encryption
+remains a release-blocking gap before production.
 
 Received files must remain in a staging location until verification succeeds.
 If verification fails, the transfer must be marked failed and staged content
 must not be presented as a completed download.
+
+Transfer manifests must be rejected before content is accepted when they have:
+
+- Missing or invalid final SHA-256.
+- Negative sizes or inconsistent chunk counts.
+- File names that contain path separators, traversal segments, control
+  characters, or platform-invalid characters.
+- Sender identity or public key values that do not match a trusted peer.
+
+Transfer completion must be recorded only after the staged file hash matches the
+manifest hash.
 
 ## Local Network Exposure
 
@@ -91,6 +103,8 @@ Desktop watched-clipboard modes must:
 - Show visible status.
 - Allow pause and disable.
 - Avoid storing clipboard content longer than necessary.
+- Block sensitive-looking content from automatic or tray-initiated send by
+  default, including passwords, tokens, private keys, and card-like values.
 
 ## Revocation
 
@@ -123,6 +137,8 @@ Optional relay requirements:
 - Expired blobs must be removed by cleanup.
 - Relay logs must not contain plaintext content, clipboard content, encryption
   keys, or decrypted metadata.
+- Relay tokens are bearer credentials and must be short-lived, random, and
+  scoped to the encrypted blob metadata they were issued for.
 
 Optional signaling requirements:
 
@@ -157,5 +173,8 @@ Before OS permission prompts, BeamDrop must explain:
 - Trusted device revocation blocks future trusted sessions.
 - Transfer encryption is enabled for all content.
 - File hash verification blocks corrupted output.
+- Unsafe receive file names are rejected rather than sanitized into a different
+  path.
+- Missing final SHA-256 prevents transfer completion.
 - Large transfer resume validates manifest and completed chunks.
 - Clipboard features follow platform privacy restrictions.
