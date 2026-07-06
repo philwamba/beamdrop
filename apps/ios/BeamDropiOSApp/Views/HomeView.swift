@@ -25,6 +25,9 @@ struct HomeView: View {
                 NavigationLink { SendFileView() } label: {
                     Label("Send File", systemImage: "doc.badge.plus")
                 }
+                NavigationLink { ReceivedItemsView() } label: {
+                    Label("Received Items", systemImage: "square.and.arrow.down")
+                }
                 NavigationLink { TransferProgressView() } label: {
                     Label("Transfer Progress", systemImage: "arrow.up.arrow.down.circle")
                 }
