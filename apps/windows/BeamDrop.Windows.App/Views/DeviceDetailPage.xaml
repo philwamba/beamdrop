@@ -4,17 +4,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
         <StackPanel Spacing="20" Padding="36">
-            <TextBlock Text="Device detail" Style="{StaticResource PageTitleTextBlockStyle}" />
+            <TextBlock Text="Device Detail" Style="{StaticResource PageTitleTextBlockStyle}" />
             <Border Style="{StaticResource DeviceCardStyle}">
                 <StackPanel Spacing="12">
                     <TextBlock Text="Will's MacBook Pro" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <TextBlock Text="macOS · trusted · fingerprint 7C:9A:2E:41:8F:03:12:AE" Style="{StaticResource MutedTextBlockStyle}" />
                     <TextBlock Text="Last seen: not yet connected" Style="{StaticResource MutedTextBlockStyle}" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Button Content="Send text" />
-                        <Button Content="Send file" />
-                        <Button Content="Revoke trust" />
+                        <Button Content="Send Text" />
+                        <Button Content="Send File" />
+                        <Button Content="Revoke Trust" />
                     </StackPanel>
+                    <InfoBar Title="Revocation Requires Confirmation" Message="A production revoke action must show confirmation and then block this device until it is paired again." Severity="Warning" IsOpen="True" />
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -6,6 +6,7 @@ struct PairDeviceView: View {
     @EnvironmentObject private var container: AppContainer
     @StateObject private var model: PairDeviceScreenModel
     @State private var showingScanner = false
+    @State private var showingApprovalConfirmation = false
 
     init() {
         _model = StateObject(wrappedValue: PairDeviceScreenModel.placeholder())
@@ -19,6 +20,7 @@ struct PairDeviceView: View {
                         .frame(width: 240, height: 240)
                         .padding()
                         .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityLabel("BeamDrop pairing QR code")
                     Text("Show this QR to another BeamDrop device.")
                         .foregroundStyle(.secondary)
                     Button("Refresh QR") {
@@ -35,15 +37,18 @@ struct PairDeviceView: View {
                     Label("Scan QR code", systemImage: "qrcode.viewfinder")
                 }
                 TextField("Paste pairing payload", text: $model.manualPayload, axis: .vertical)
-                Button("Validate pasted QR") {
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("Validate Pasted QR") {
                     model.importScannedPayload(model.manualPayload)
                 }
+                .disabled(model.manualPayload.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
             if let request = model.pendingRequest {
                 Section("Pairing approval") {
                     DeviceApprovalView(request: request) {
-                        model.approvePending()
+                        showingApprovalConfirmation = true
                     } reject: {
                         model.pendingRequest = nil
                     }
@@ -57,6 +62,14 @@ struct PairDeviceView: View {
             }
         }
         .navigationTitle("Pair Device")
+        .confirmationDialog("Trust This Device?", isPresented: $showingApprovalConfirmation, titleVisibility: .visible) {
+            Button("Approve Device") {
+                model.approvePending()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Only approve devices you physically control. Unknown devices cannot transfer until approved.")
+        }
         .sheet(isPresented: $showingScanner) {
             QRScannerView { payload in
                 showingScanner = false
@@ -145,6 +158,9 @@ struct DeviceApprovalView: View {
             Text("Fingerprint: \(request.fingerprint)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text("Approving saves this device as trusted. You can revoke it later from Trusted Devices.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             HStack {
                 Button("Approve", action: approve).buttonStyle(.borderedProminent)
                 Button("Reject", role: .cancel, action: reject)
@@ -164,6 +180,7 @@ struct QRCodeImage: View {
                 .interpolation(.none)
                 .resizable()
                 .scaledToFit()
+                .accessibilityLabel("BeamDrop pairing QR code")
         } else {
             Image(systemName: "qrcode")
                 .resizable()

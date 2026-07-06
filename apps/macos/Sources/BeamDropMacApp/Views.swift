@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @State private var isDropTargeted = false
+    @State private var confirmCancel = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -49,13 +50,21 @@ struct HomeView: View {
 
             if let progress = appState.activeProgress {
                 TransferProgressView(progress: progress) {
-                    appState.cancelActiveTransfer()
+                    confirmCancel = true
                 }
             }
 
             Spacer()
         }
         .padding(24)
+        .confirmationDialog("Cancel Transfer?", isPresented: $confirmCancel, titleVisibility: .visible) {
+            Button("Cancel Transfer", role: .destructive) {
+                appState.cancelActiveTransfer()
+            }
+            Button("Keep Transfer", role: .cancel) {}
+        } message: {
+            Text("The active transfer will stop and appear as cancelled in history.")
+        }
     }
 }
 
@@ -123,7 +132,7 @@ struct PairingView: View {
             }
             Divider()
             VStack(alignment: .leading, spacing: 14) {
-                Header(title: "Import Pairing Code", subtitle: "Paste QR text from another BeamDrop device when camera scanning is not available.")
+                Header(title: "Scan QR Or Import Code", subtitle: "Paste QR text from another BeamDrop device when camera scanning is not available on this Mac.")
                 TextEditor(text: $appState.pairingImportText)
                     .font(.system(.body, design: .monospaced))
                     .frame(height: 180)
@@ -140,6 +149,7 @@ struct PairingView: View {
 
 struct TrustedDevicesView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var peerPendingRevoke: TrustedPeer?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -163,7 +173,7 @@ struct TrustedDevicesView: View {
                         Spacer()
                         Text(peer.status.rawValue)
                             .foregroundStyle(peer.status == .trusted ? .green : .red)
-                        Button("Revoke", role: .destructive) { appState.revoke(peer) }
+                        Button("Revoke", role: .destructive) { peerPendingRevoke = peer }
                             .disabled(peer.status == .revoked)
                     }
                     .padding(.vertical, 4)
@@ -172,6 +182,20 @@ struct TrustedDevicesView: View {
             Spacer()
         }
         .padding(24)
+        .confirmationDialog("Revoke Trust?", isPresented: Binding(
+            get: { peerPendingRevoke != nil },
+            set: { if !$0 { peerPendingRevoke = nil } }
+        ), titleVisibility: .visible) {
+            Button("Revoke \(peerPendingRevoke?.deviceName ?? "Device")", role: .destructive) {
+                if let peer = peerPendingRevoke {
+                    appState.revoke(peer)
+                }
+                peerPendingRevoke = nil
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("\(peerPendingRevoke?.deviceName ?? "This device") will be blocked from sending, receiving, or resuming transfers until paired again.")
+        }
     }
 }
 
@@ -249,8 +273,24 @@ struct SettingsView: View {
                 Text("Transfers stay on the local network when possible. Cloud upload is not required for the MVP.")
                 Text("Unknown devices are rejected, and revoked devices are blocked before content is accepted.")
             }
+            Section("Permissions") {
+                Text("macOS may prompt for Local Network, file access, notifications, and login item changes only when those features are used.")
+            }
         }
         .formStyle(.grouped)
+        .padding(24)
+    }
+}
+
+struct PrivacyView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Header(title: "Privacy", subtitle: "BeamDrop is designed for explicit local transfer between trusted devices.")
+            EmptyState(title: "Local-First Transfers", message: "BeamDrop does not require login or cloud upload for local MVP transfers.")
+            EmptyState(title: "Clipboard Control", message: "Clipboard sharing is manual. BeamDrop does not silently monitor or send clipboard content.")
+            EmptyState(title: "Device Trust", message: "Unknown devices are rejected. Revoked devices are blocked before content is accepted.")
+            Spacer()
+        }
         .padding(24)
     }
 }
@@ -281,6 +321,19 @@ struct NetworkDiagnosticsView: View {
     }
 }
 
+struct AboutView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Header(title: "About", subtitle: "BeamDrop for macOS")
+            EmptyState(title: "Native App", message: "Built with Swift, SwiftUI, AppKit, Network.framework, Bonjour, NSPasteboard, and Keychain.")
+            EmptyState(title: "Protocol", message: "Uses BeamDrop protocol 1.0 with 4 MB chunks and final SHA-256 verification.")
+            EmptyState(title: "Release Status", message: "MVP development. Production downloads will be published after signing, notarization, and release testing.")
+            Spacer()
+        }
+        .padding(24)
+    }
+}
+
 struct ReceiveApprovalDialog: View {
     let request: PendingReceiveRequest
     @Environment(\.dismiss) private var dismiss
@@ -289,6 +342,9 @@ struct ReceiveApprovalDialog: View {
         VStack(alignment: .leading, spacing: 16) {
             Header(title: "Receive File?", subtitle: "\(request.senderName) wants to send \(request.fileName).")
             Text("\(request.sizeBytes.formatted()) bytes")
+                .foregroundStyle(.secondary)
+            Text("Accepting this transfer does not change trusted-device settings.")
+                .font(.callout)
                 .foregroundStyle(.secondary)
             HStack {
                 Button("Reject", role: .cancel) {

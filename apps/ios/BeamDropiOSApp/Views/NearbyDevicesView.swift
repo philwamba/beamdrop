@@ -25,6 +25,6 @@ struct NearbyDevicesView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Nearby")
+        .navigationTitle("Nearby Devices")
     }
 }

@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
         <StackPanel Spacing="20" Padding="36">
-            <TextBlock Text="Pair device" Style="{StaticResource PageTitleTextBlockStyle}" />
+            <TextBlock Text="Pair New Device" Style="{StaticResource PageTitleTextBlockStyle}" />
             <Grid ColumnSpacing="18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="360" />
@@ -16,12 +16,12 @@
                     </Grid>
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="14">
-                    <TextBlock Text="Show this QR on the receiving device" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                    <TextBlock Text="Show This QR On The Receiving Device" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <TextBlock Text="Payload includes device ID, public key, protocol version, service name, and endpoint hints. It contains no reusable secret." Style="{StaticResource MutedTextBlockStyle}" />
                     <TextBox Header="Manual pairing code" Text="beamdrop://pairing/session-preview" IsReadOnly="True" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button Content="Refresh QR" />
-                        <Button Content="Scan another QR" />
+                        <Button Content="Scan Another QR" />
                     </StackPanel>
                 </StackPanel>
             </Grid>

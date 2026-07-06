@@ -187,6 +187,18 @@ final class AppState: ObservableObject {
     func cancelActiveTransfer() {
         guard let transferId = activeProgress?.transferId else { return }
         transferService.cancel(transferId: transferId)
+        activeProgress = activeProgress.map {
+            TransferProgress(
+                transferId: $0.transferId,
+                status: .cancelled,
+                bytesTransferred: $0.bytesTransferred,
+                totalBytes: $0.totalBytes,
+                percent: $0.percent,
+                speedBytesPerSecond: $0.speedBytesPerSecond,
+                fileName: $0.fileName,
+                peerDeviceName: $0.peerDeviceName
+            )
+        }
         refresh()
     }
 

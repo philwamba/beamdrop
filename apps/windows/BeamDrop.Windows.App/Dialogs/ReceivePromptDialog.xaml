@@ -2,7 +2,7 @@
     x:Class="BeamDrop.Windows.App.Dialogs.ReceivePromptDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Receive transfer?"
+    Title="Receive Transfer?"
     PrimaryButtonText="Accept"
     SecondaryButtonText="Reject"
     DefaultButton="Primary">
@@ -10,6 +10,6 @@
         <TextBlock Text="Sender: Unknown Windows PC" FontWeight="SemiBold" />
         <TextBlock Text="Trust state: unknown" Style="{StaticResource MutedTextBlockStyle}" />
         <TextBlock Text="Type: file · Items: 1 · Size: 42 MB" Style="{StaticResource MutedTextBlockStyle}" />
-        <InfoBar Title="Accepting does not trust this device" Severity="Warning" IsOpen="True" />
+        <InfoBar Title="Accepting Does Not Trust This Device" Message="Unknown and revoked devices must be blocked before this prompt. Accepting only allows this transfer." Severity="Warning" IsOpen="True" />
     </StackPanel>
 </ContentDialog>

@@ -8,7 +8,7 @@ public enum BeamDropProtocol {
     public static let appGroupIdentifier = "group.com.beamdrop.ios"
 }
 
-public enum BeamDropPlatform: String, Codable, CaseIterable, Equatable {
+public enum BeamDropPlatform: String, Codable, CaseIterable, Equatable, Sendable {
     case android
     case ios
     case macos
@@ -16,21 +16,21 @@ public enum BeamDropPlatform: String, Codable, CaseIterable, Equatable {
     case unknown
 }
 
-public enum TrustState: String, Codable, Equatable {
+public enum TrustState: String, Codable, Equatable, Sendable {
     case unknown
     case pairing
     case trusted
     case revoked
 }
 
-public enum TransferKind: String, Codable, Equatable {
+public enum TransferKind: String, Codable, Equatable, Sendable {
     case text = "TEXT"
     case url = "URL"
     case file = "FILE"
     case clipboardText = "CLIPBOARD_TEXT"
 }
 
-public enum TransferStatus: String, Codable, Equatable {
+public enum TransferStatus: String, Codable, Equatable, Sendable {
     case queued = "Queued"
     case waitingForApproval = "WaitingForApproval"
     case transferring = "Transferring"
@@ -43,7 +43,7 @@ public enum TransferStatus: String, Codable, Equatable {
     case incomplete = "Incomplete"
 }
 
-public enum TransferDirection: String, Codable, Equatable {
+public enum TransferDirection: String, Codable, Equatable, Sendable {
     case sent = "Sent"
     case received = "Received"
 }

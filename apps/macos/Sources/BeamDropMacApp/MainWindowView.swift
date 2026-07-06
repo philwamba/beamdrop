@@ -28,8 +28,12 @@ struct MainWindowView: View {
                     TrustedDevicesView()
                 case .settings:
                     SettingsView()
+                case .privacy:
+                    PrivacyView()
                 case .diagnostics:
                     NetworkDiagnosticsView()
+                case .about:
+                    AboutView()
                 }
             }
             .frame(minWidth: 680, minHeight: 520)
@@ -55,7 +59,9 @@ private enum SidebarSection: String, CaseIterable, Identifiable {
     case history
     case trusted
     case settings
+    case privacy
     case diagnostics
+    case about
 
     var id: String { rawValue }
     var title: String {
@@ -66,7 +72,9 @@ private enum SidebarSection: String, CaseIterable, Identifiable {
         case .history: "History"
         case .trusted: "Trusted Devices"
         case .settings: "Settings"
+        case .privacy: "Privacy"
         case .diagnostics: "Network Diagnostics"
+        case .about: "About"
         }
     }
 
@@ -78,7 +86,9 @@ private enum SidebarSection: String, CaseIterable, Identifiable {
         case .history: "clock"
         case .trusted: "lock.shield"
         case .settings: "gearshape"
+        case .privacy: "hand.raised"
         case .diagnostics: "waveform.path.ecg"
+        case .about: "info.circle"
         }
     }
 }

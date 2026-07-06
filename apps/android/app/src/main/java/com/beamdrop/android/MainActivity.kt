@@ -14,6 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -171,19 +172,33 @@ class MainActivity : ComponentActivity() {
 
 private enum class Screen {
     Home,
+    Nearby,
     Pair,
     Scan,
     Devices,
+    DeviceDetail,
     Permissions,
     SendText,
     SendFile,
     History,
+    Settings,
+    Privacy,
+    Diagnostics,
+    About,
 }
 
 @Composable
 private fun BeamDropTheme(content: @Composable () -> Unit) {
+    val dark = isSystemInDarkTheme()
     MaterialTheme(
-        colorScheme = lightColorScheme(
+        colorScheme = if (dark) darkColorScheme(
+            primary = Color(0xFFAECBFA),
+            secondary = Color(0xFF8FD8CA),
+            tertiary = Color(0xFFFFD28A),
+            surface = Color(0xFF111318),
+            surfaceVariant = Color(0xFF232832),
+            background = Color(0xFF0B0D12),
+        ) else lightColorScheme(
             primary = Color(0xFF1967D2),
             secondary = Color(0xFF146C5F),
             tertiary = Color(0xFF7A4D00),
@@ -215,6 +230,7 @@ private fun BeamDropApp(
     var history by remember { mutableStateOf(historyStore.list()) }
     var progress by remember { mutableStateOf<TransferProgress?>(null) }
     var refreshPairing by remember { mutableIntStateOf(0) }
+    var selectedDevice by remember { mutableStateOf<TrustedPeer?>(null) }
 
     fun reloadPeers() {
         peers = trustedPeerRepository.listPeers()
@@ -231,10 +247,13 @@ private fun BeamDropApp(
             history = history,
             onPair = { screen = Screen.Pair },
             onScan = { screen = Screen.Scan },
+            onNearby = { screen = Screen.Nearby },
             onDevices = { screen = Screen.Devices },
             onPermissions = { screen = Screen.Permissions },
             onSendText = { screen = Screen.SendText },
             onSendFile = { screen = Screen.SendFile },
+            onSettings = { screen = Screen.Settings },
+            onAbout = { screen = Screen.About },
             onHistory = {
                 reloadHistory()
                 screen = Screen.History
@@ -249,6 +268,12 @@ private fun BeamDropApp(
                 deviceNameRepository.setDeviceName(it)
                 identity = identityRepository.getOrCreateIdentity()
             },
+        )
+
+        Screen.Nearby -> NearbyDevicesScreen(
+            onBack = { screen = Screen.Home },
+            onPair = { screen = Screen.Pair },
+            onDiagnostics = { screen = Screen.Diagnostics },
         )
 
         Screen.Pair -> PairNewDeviceScreen(
@@ -292,6 +317,20 @@ private fun BeamDropApp(
                 reloadPeers()
             },
             onPair = { screen = Screen.Pair },
+            onDevice = {
+                selectedDevice = it
+                screen = Screen.DeviceDetail
+            },
+        )
+
+        Screen.DeviceDetail -> DeviceDetailScreen(
+            peer = selectedDevice,
+            onBack = { screen = Screen.Devices },
+            onRevoke = {
+                selectedDevice?.let { trustedPeerRepository.revoke(it.deviceId) }
+                reloadPeers()
+                screen = Screen.Devices
+            },
         )
 
         Screen.Permissions -> PermissionExplanationScreen(
@@ -333,6 +372,23 @@ private fun BeamDropApp(
                 reloadHistory()
             },
         )
+
+        Screen.Settings -> SettingsScreen(
+            onBack = { screen = Screen.Home },
+            onPrivacy = { screen = Screen.Privacy },
+            onDiagnostics = { screen = Screen.Diagnostics },
+            onPermissions = { screen = Screen.Permissions },
+            onAbout = { screen = Screen.About },
+        )
+
+        Screen.Privacy -> PrivacyScreen(onBack = { screen = Screen.Settings })
+
+        Screen.Diagnostics -> NetworkDiagnosticsScreen(
+            onBack = { screen = Screen.Settings },
+            onPair = { screen = Screen.Pair },
+        )
+
+        Screen.About -> AboutScreen(onBack = { screen = Screen.Settings })
     }
 }
 
@@ -344,12 +400,15 @@ private fun HomeScreen(
     history: List<TransferHistoryRecord>,
     onPair: () -> Unit,
     onScan: () -> Unit,
+    onNearby: () -> Unit,
     onDevices: () -> Unit,
     onPermissions: () -> Unit,
     onSendText: () -> Unit,
     onSendFile: () -> Unit,
     onSendClipboard: () -> Unit,
     onHistory: () -> Unit,
+    onSettings: () -> Unit,
+    onAbout: () -> Unit,
     onNameSaved: (String) -> Unit,
 ) {
     var name by remember(identity.displayName) { mutableStateOf(identity.displayName) }
@@ -433,6 +492,21 @@ private fun HomeScreen(
             }
 
             item {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = onNearby, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Outlined.Devices, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Nearby Devices")
+                    }
+                    OutlinedButton(onClick = onSettings, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Outlined.Security, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Settings")
+                    }
+                }
+            }
+
+            item {
                 SectionSurface {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Devices, contentDescription = null)
@@ -454,6 +528,12 @@ private fun HomeScreen(
                     Icon(Icons.Outlined.Security, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
                     Text("Permissions and local network")
+                }
+            }
+
+            item {
+                TextButton(onClick = onAbout, modifier = Modifier.fillMaxWidth()) {
+                    Text("About BeamDrop")
                 }
             }
 
@@ -481,6 +561,47 @@ private fun EmptyDevices(onPair: () -> Unit, onScan: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onPair) { Text("Show QR") }
         OutlinedButton(onClick = onScan) { Text("Scan QR") }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NearbyDevicesScreen(
+    onBack: () -> Unit,
+    onPair: () -> Unit,
+    onDiagnostics: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Nearby Devices") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                SectionSurface {
+                    Text("No devices found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "BeamDrop looks for ${com.beamdrop.android.core.pairing.BEAMDROP_SERVICE_NAME} on your local network. Public Wi-Fi, guest networks, VPNs, and corporate client isolation can block discovery.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = onPair) { Text("Pair With QR") }
+                        OutlinedButton(onClick = onDiagnostics) { Text("Run Diagnostics") }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -708,6 +829,7 @@ private fun TrustedDevicesScreen(
     onBack: () -> Unit,
     onRevoke: (String) -> Unit,
     onPair: () -> Unit,
+    onDevice: (TrustedPeer) -> Unit,
 ) {
     var pendingRevoke by remember { mutableStateOf<TrustedPeer?>(null) }
     pendingRevoke?.let { peer ->
@@ -730,7 +852,7 @@ private fun TrustedDevicesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Trusted devices") },
+                title = { Text("Trusted Devices") },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -754,6 +876,10 @@ private fun TrustedDevicesScreen(
                     SectionSurface {
                         PeerRow(peer)
                         Spacer(Modifier.height(10.dp))
+                        OutlinedButton(onClick = { onDevice(peer) }) {
+                            Text("View Details")
+                        }
+                        Spacer(Modifier.height(6.dp))
                         if (peer.trustState == TrustState.Trusted) {
                             OutlinedButton(onClick = { pendingRevoke = peer }) {
                                 Icon(Icons.Outlined.Block, contentDescription = null)
@@ -762,6 +888,71 @@ private fun TrustedDevicesScreen(
                             }
                         } else {
                             Text("Revoked devices cannot transfer or resume until deliberately re-paired.")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeviceDetailScreen(
+    peer: TrustedPeer?,
+    onBack: () -> Unit,
+    onRevoke: () -> Unit,
+) {
+    var confirmRevoke by remember { mutableStateOf(false) }
+    if (confirmRevoke) {
+        AlertDialog(
+            onDismissRequest = { confirmRevoke = false },
+            title = { Text("Revoke Trust?") },
+            text = { Text("This device will be blocked from sending, receiving, or resuming transfers until it is paired again.") },
+            confirmButton = {
+                Button(onClick = {
+                    confirmRevoke = false
+                    onRevoke()
+                }) { Text("Revoke") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRevoke = false }) { Text("Cancel") } },
+        )
+    }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Device Detail") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (peer == null) {
+                item { SectionSurface { ErrorText("No device selected. Return to trusted devices and choose a device.") } }
+            } else {
+                item {
+                    SectionSurface {
+                        Text(peer.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Platform: ${peer.platform.wireName}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Trust: ${peer.trustState.name}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Fingerprint: ${peer.fingerprint}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Endpoint: ${peer.endpoint?.host ?: "Not available"}:${peer.endpoint?.port ?: DEFAULT_TRANSFER_PORT}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                        if (peer.trustState == TrustState.Trusted) {
+                            OutlinedButton(onClick = { confirmRevoke = true }) {
+                                Icon(Icons.Outlined.Block, contentDescription = null)
+                                Spacer(Modifier.size(8.dp))
+                                Text("Revoke Trust")
+                            }
+                        } else {
+                            ErrorText("Revoked devices are blocked until deliberately re-paired.")
                         }
                     }
                 }
@@ -904,7 +1095,7 @@ private fun SendTextScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Send text or link") },
+                title = { Text("Send Text Or Link") },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -985,7 +1176,7 @@ private fun SendFileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Send file") },
+                title = { Text("Send File") },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -1070,7 +1261,7 @@ private fun TransferHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Transfer history") },
+                title = { Text("Transfer History") },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -1100,6 +1291,132 @@ private fun TransferHistoryScreen(
                     SectionSurface { HistoryRow(record) }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsScreen(
+    onBack: () -> Unit,
+    onPrivacy: () -> Unit,
+    onDiagnostics: () -> Unit,
+    onPermissions: () -> Unit,
+    onAbout: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                SectionSurface {
+                    Text("Transfer Defaults", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Auto-accept is off by default. Only trusted devices can be considered for future auto-accept rules.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item { SettingsRow("Privacy", "Clipboard and trust behavior.", onPrivacy) }
+            item { SettingsRow("Permissions", "Camera, notifications, and local network explanations.", onPermissions) }
+            item { SettingsRow("Network Diagnostics", "Troubleshoot Bonjour, Wi-Fi isolation, VPNs, and manual QR fallback.", onDiagnostics) }
+            item { SettingsRow("About", "Version, native stack, and release status.", onAbout) }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRow(title: String, detail: String, onClick: () -> Unit) {
+    SectionSurface {
+        Text(title, fontWeight = FontWeight.SemiBold)
+        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onClick) { Text("Open") }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PrivacyScreen(onBack: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Privacy") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { SectionSurface { Text("Local-First", fontWeight = FontWeight.SemiBold); Text("BeamDrop sends over the local network when possible and does not require login or cloud upload for local MVP transfers.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Clipboard", fontWeight = FontWeight.SemiBold); Text("Android clipboard sending is manual and user-triggered. BeamDrop does not hide background clipboard monitoring behind a service.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Device Trust", fontWeight = FontWeight.SemiBold); Text("Unknown devices are rejected. Revoked devices are blocked before content is accepted.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NetworkDiagnosticsScreen(onBack: () -> Unit, onPair: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Network Diagnostics") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { SectionSurface { Text("Local Address", fontWeight = FontWeight.SemiBold); Text(LocalNetworkAddress.firstUsableIpv4Address() ?: "No usable local IPv4 address found.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Discovery Service", fontWeight = FontWeight.SemiBold); Text("${com.beamdrop.android.core.pairing.BEAMDROP_SERVICE_NAME} may be blocked by public Wi-Fi, guest networks, VPNs, or corporate isolation.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Manual Fallback", fontWeight = FontWeight.SemiBold); Text("Use QR pairing when discovery fails. Security rules stay the same.", color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(8.dp)); Button(onClick = onPair) { Text("Pair With QR") } } }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AboutScreen(onBack: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("About") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { SectionSurface { Text("BeamDrop For Android", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text("Native Kotlin and Jetpack Compose app for private local transfer between trusted devices.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Release Status", fontWeight = FontWeight.SemiBold); Text("MVP development. Production downloads will be published after signing, verification, and release testing.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }
 }

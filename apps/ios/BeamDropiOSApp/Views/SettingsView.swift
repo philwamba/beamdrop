@@ -9,10 +9,17 @@ struct SettingsView: View {
             Section("Device") {
                 TextField("Device name", text: $deviceName)
                 Toggle("Auto-accept trusted devices", isOn: $autoAccept)
+                Text("Auto-accept applies only to trusted devices and should stay off on shared networks.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Permissions") {
+                Text("Camera is requested only for QR scanning. Local Network is requested only for Bonjour discovery and receiving.")
+                    .foregroundStyle(.secondary)
             }
             Section("More") {
                 NavigationLink("Privacy") { PrivacyView() }
-                NavigationLink("Network diagnostics") { NetworkDiagnosticsView() }
+                NavigationLink("Network Diagnostics") { NetworkDiagnosticsView() }
                 NavigationLink("About") { AboutView() }
             }
         }
@@ -47,8 +54,11 @@ struct NetworkDiagnosticsView: View {
             Section("Local network permission") {
                 Text("iOS prompts for Local Network access when BeamDrop browses or advertises Bonjour services.")
             }
+            Section("Manual fallback") {
+                Text("Use QR pairing when public or corporate Wi-Fi blocks local discovery. Security checks remain the same.")
+            }
         }
-        .navigationTitle("Diagnostics")
+        .navigationTitle("Network Diagnostics")
     }
 }
 
@@ -59,6 +69,8 @@ struct AboutView: View {
                 Text("BeamDrop for iPhone")
                     .font(.headline)
                 Text("Native SwiftUI app for local-first transfer between trusted devices.")
+                Text("MVP development. Public downloads will be published after signing, TestFlight validation, and release testing.")
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("About")

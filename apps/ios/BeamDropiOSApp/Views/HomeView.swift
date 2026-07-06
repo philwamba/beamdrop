@@ -17,13 +17,16 @@ struct HomeView: View {
 
             Section("Quick actions") {
                 NavigationLink { PairDeviceView() } label: {
-                    Label("Pair new device", systemImage: "qrcode")
+                    Label("Pair New Device", systemImage: "qrcode")
                 }
                 NavigationLink { SendTextView() } label: {
-                    Label("Send text", systemImage: "text.bubble")
+                    Label("Send Text", systemImage: "text.bubble")
                 }
                 NavigationLink { SendFileView() } label: {
-                    Label("Send file", systemImage: "doc.badge.plus")
+                    Label("Send File", systemImage: "doc.badge.plus")
+                }
+                NavigationLink { TransferProgressView() } label: {
+                    Label("Transfer Progress", systemImage: "arrow.up.arrow.down.circle")
                 }
             }
 
@@ -53,5 +56,6 @@ struct DeviceRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(peer.deviceName), \(peer.platform.rawValue), \(peer.trustState.rawValue)")
     }
 }

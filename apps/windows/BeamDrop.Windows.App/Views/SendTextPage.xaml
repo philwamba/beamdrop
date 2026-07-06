@@ -8,11 +8,11 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Text="Send text" Style="{StaticResource PageTitleTextBlockStyle}" />
+        <TextBlock Text="Send Text" Style="{StaticResource PageTitleTextBlockStyle}" />
         <TextBox Grid.Row="1" Header="Text" PlaceholderText="Type or paste text to send" AcceptsReturn="True" TextWrapping="Wrap" />
         <CommandBar Grid.Row="2" DefaultLabelPosition="Right">
             <AppBarButton Icon="Paste" Label="Paste" />
-            <AppBarButton Icon="Send" Label="Send to trusted device" />
+            <AppBarButton Icon="Send" Label="Send To Trusted Device" />
         </CommandBar>
     </Grid>
 </Page>

@@ -4,6 +4,7 @@ import SwiftUI
 struct TrustedDevicesView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var refresh = UUID()
+    @State private var peerPendingRevoke: TrustedPeer?
 
     var body: some View {
         List {
@@ -17,8 +18,7 @@ struct TrustedDevicesView: View {
                     }
                     .swipeActions {
                         Button("Revoke", role: .destructive) {
-                            try? container.trustedPeers.revoke(deviceId: peer.deviceId)
-                            refresh = UUID()
+                            peerPendingRevoke = peer
                         }
                     }
                 }
@@ -26,6 +26,15 @@ struct TrustedDevicesView: View {
         }
         .id(refresh)
         .navigationTitle("Trusted Devices")
+        .confirmationDialog("Revoke Trust?", item: $peerPendingRevoke, titleVisibility: .visible) { peer in
+            Button("Revoke \(peer.deviceName)", role: .destructive) {
+                try? container.trustedPeers.revoke(deviceId: peer.deviceId)
+                refresh = UUID()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { peer in
+            Text("\(peer.deviceName) will be blocked until paired again.")
+        }
         .toolbar {
             NavigationLink { PairDeviceView() } label: {
                 Image(systemName: "plus")
@@ -43,6 +52,7 @@ struct DeviceDetailView: View {
                 LabeledContent("Platform", value: peer.platform.rawValue)
                 LabeledContent("Trust", value: peer.trustState.rawValue)
                 LabeledContent("Fingerprint", value: peer.fingerprint)
+                LabeledContent("Endpoint", value: peer.endpoint?.host ?? "Not available")
             }
             if peer.trustState == .revoked {
                 Section {

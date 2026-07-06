@@ -24,6 +24,8 @@ struct AppTabView: View {
                 .tabItem { Label("Nearby", systemImage: "dot.radiowaves.left.and.right") }
             NavigationStack { TrustedDevicesView() }
                 .tabItem { Label("Devices", systemImage: "iphone.gen3.radiowaves.left.and.right") }
+            NavigationStack { TransferProgressView() }
+                .tabItem { Label("Transfers", systemImage: "arrow.up.arrow.down.circle") }
             NavigationStack { HistoryView() }
                 .tabItem { Label("History", systemImage: "clock") }
             NavigationStack { SettingsView() }

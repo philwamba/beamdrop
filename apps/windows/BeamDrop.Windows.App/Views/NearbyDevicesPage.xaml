@@ -4,13 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
         <StackPanel Spacing="20" Padding="36">
-            <TextBlock Text="Nearby devices" Style="{StaticResource PageTitleTextBlockStyle}" />
-            <InfoBar Title="No devices found" Message="BeamDrop is scanning for _beamdrop._tcp services on the local network. Check firewall, Wi-Fi isolation, or use QR pairing." Severity="Informational" IsOpen="True" />
+            <TextBlock Text="Nearby Devices" Style="{StaticResource PageTitleTextBlockStyle}" />
+            <InfoBar Title="No Devices Found" Message="BeamDrop is scanning for _beamdrop._tcp services on the local network. Check firewall, Wi-Fi isolation, VPNs, or use QR pairing." Severity="Informational" IsOpen="True" />
             <Border Style="{StaticResource DeviceCardStyle}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="Discovery status" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                    <TextBlock Text="mDNS/DNS-SD browser is stubbed until the network transport is connected. Production discovery must not fake results." Style="{StaticResource MutedTextBlockStyle}" />
-                    <Button Content="Run diagnostics" HorizontalAlignment="Left" />
+                    <TextBlock Text="mDNS/DNS-SD browser must show loading, blocked, empty, and manual-fallback states without fake nearby devices." Style="{StaticResource MutedTextBlockStyle}" />
+                    <Button Content="Run Diagnostics" HorizontalAlignment="Left" />
                 </StackPanel>
             </Border>
         </StackPanel>

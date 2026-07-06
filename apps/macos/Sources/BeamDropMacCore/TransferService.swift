@@ -20,6 +20,26 @@ public struct TransferProgress: Equatable, Sendable {
     public let speedBytesPerSecond: Double
     public let fileName: String
     public let peerDeviceName: String
+
+    public init(
+        transferId: String,
+        status: TransferStatus,
+        bytesTransferred: Int64,
+        totalBytes: Int64,
+        percent: Double,
+        speedBytesPerSecond: Double,
+        fileName: String,
+        peerDeviceName: String
+    ) {
+        self.transferId = transferId
+        self.status = status
+        self.bytesTransferred = bytesTransferred
+        self.totalBytes = totalBytes
+        self.percent = percent
+        self.speedBytesPerSecond = speedBytesPerSecond
+        self.fileName = fileName
+        self.peerDeviceName = peerDeviceName
+    }
 }
 
 public typealias TransferProgressHandler = @Sendable (TransferProgress) -> Void
