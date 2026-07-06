@@ -6,7 +6,7 @@
         <TextBlock Text="About BeamDrop" Style="{StaticResource PageTitleTextBlockStyle}" />
         <Border Style="{StaticResource DeviceCardStyle}">
             <StackPanel Spacing="10">
-                <Image Source="ms-appx:///Assets/BeamDropLogo.png" Width="72" Height="72" HorizontalAlignment="Left" AutomationProperties.Name="BeamDrop app icon" />
+                <Image Source="ms-appx:///Assets/BeamDropLogo.png" Width="72" Height="72" HorizontalAlignment="Left" AutomationProperties.Name="BeamDrop logo" />
                 <TextBlock Text="BeamDrop for Windows" Style="{StaticResource SectionTitleTextBlockStyle}" />
                 <TextBlock Text="Native WinUI 3 shell for local-first private transfer between trusted personal devices." Style="{StaticResource MutedTextBlockStyle}" />
                 <TextBlock Text="No Electron. No Tauri. No web UI." Style="{StaticResource MutedTextBlockStyle}" />

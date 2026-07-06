@@ -436,8 +436,8 @@ private fun HomeScreen(
                 SectionSurface {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Image(
-                            painter = painterResource(id = R.mipmap.ic_launcher),
-                            contentDescription = "BeamDrop app icon",
+                            painter = painterResource(id = R.drawable.beamdrop_logo),
+                            contentDescription = "BeamDrop logo",
                             modifier = Modifier.size(44.dp),
                         )
                         Column {
@@ -593,6 +593,18 @@ private fun OnboardingScreen(onBack: () -> Unit, onPair: () -> Unit) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                SectionSurface(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painter = painterResource(id = R.drawable.beamdrop_logo),
+                        contentDescription = "BeamDrop logo",
+                        modifier = Modifier.size(72.dp),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text("BeamDrop", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Private local transfer for trusted devices.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             item { SectionSurface { Text("Private Local Transfer", fontWeight = FontWeight.SemiBold); Text("Send text and files between devices you trust without requiring login or cloud upload.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
             item { SectionSurface { Text("Pair With QR", fontWeight = FontWeight.SemiBold); Text("Trust is explicit. Unknown devices cannot send content until approved.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
             item { SectionSurface { Text("Clipboard Is Manual", fontWeight = FontWeight.SemiBold); Text("Android clipboard sending is user-triggered and respects platform restrictions.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
@@ -693,6 +705,12 @@ private fun PairNewDeviceScreen(
         ) {
             item {
                 SectionSurface(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painter = painterResource(id = R.drawable.beamdrop_logo),
+                        contentDescription = "BeamDrop logo",
+                        modifier = Modifier.size(64.dp),
+                    )
+                    Spacer(Modifier.height(12.dp))
                     Text(state.identity.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Text("Android · protocol v${state.identity.protocolVersion}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
@@ -1470,7 +1488,18 @@ private fun AboutScreen(onBack: () -> Unit) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { SectionSurface { Text("BeamDrop For Android", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text("Native Kotlin and Jetpack Compose app for private local transfer between trusted devices.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item {
+                SectionSurface(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painter = painterResource(id = R.drawable.beamdrop_logo),
+                        contentDescription = "BeamDrop logo",
+                        modifier = Modifier.size(72.dp),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text("BeamDrop For Android", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Native Kotlin and Jetpack Compose app for private local transfer between trusted devices.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             item { SectionSurface { Text("Release Status", fontWeight = FontWeight.SemiBold); Text("MVP development. Production downloads will be published after signing, verification, and release testing.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }

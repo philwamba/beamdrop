@@ -16,6 +16,11 @@ struct PairDeviceView: View {
         List {
             Section {
                 VStack(spacing: 16) {
+                    Image("BeamDropLogo")
+                        .resizable()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .accessibilityLabel("BeamDrop logo")
                     QRCodeImage(payload: model.qrPayload)
                         .frame(width: 240, height: 240)
                         .padding()

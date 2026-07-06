@@ -12,7 +12,7 @@ struct HomeView: View {
                         .resizable()
                         .frame(width: 56, height: 56)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .accessibilityLabel("BeamDrop app icon")
+                        .accessibilityLabel("BeamDrop logo")
                     Text(container.identity.deviceName)
                         .font(.title2.bold())
                     Text("iPhone · protocol \(container.identity.protocolVersion)")

@@ -66,6 +66,11 @@ struct AboutView: View {
     var body: some View {
         List {
             Section {
+                Image("BeamDropLogo")
+                    .resizable()
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityLabel("BeamDrop logo")
                 Text("BeamDrop for iPhone")
                     .font(.headline)
                 Text("Native SwiftUI app for local-first transfer between trusted devices.")

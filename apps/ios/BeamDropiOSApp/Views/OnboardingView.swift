@@ -30,7 +30,7 @@ struct OnboardingView: View {
                     .resizable()
                     .frame(width: 88, height: 88)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .accessibilityLabel("BeamDrop app icon")
+                    .accessibilityLabel("BeamDrop logo")
             } else {
                 Image(systemName: symbol)
                     .font(.system(size: 72))

@@ -5,7 +5,7 @@
     <ScrollViewer>
         <StackPanel Spacing="24" Padding="36">
             <StackPanel Spacing="6">
-                <Image Source="ms-appx:///Assets/BeamDropLogo.png" Width="64" Height="64" HorizontalAlignment="Left" AutomationProperties.Name="BeamDrop app icon" />
+                <Image Source="ms-appx:///Assets/BeamDropLogo.png" Width="64" Height="64" HorizontalAlignment="Left" AutomationProperties.Name="BeamDrop logo" />
                 <TextBlock Text="BeamDrop" Style="{StaticResource PageTitleTextBlockStyle}" />
                 <TextBlock Text="Local-first transfer for trusted personal devices." Style="{StaticResource MutedTextBlockStyle}" />
             </StackPanel>

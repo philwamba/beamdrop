@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
         <StackPanel Spacing="20" Padding="36">
+            <Image Source="ms-appx:///Assets/BeamDropLogo.png" Width="72" Height="72" HorizontalAlignment="Left" AutomationProperties.Name="BeamDrop logo" />
             <TextBlock Text="Pair New Device" Style="{StaticResource PageTitleTextBlockStyle}" />
             <Grid ColumnSpacing="18">
                 <Grid.ColumnDefinitions>

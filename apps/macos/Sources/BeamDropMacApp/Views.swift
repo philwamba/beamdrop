@@ -132,7 +132,7 @@ struct PairingView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 28) {
             VStack(alignment: .leading, spacing: 14) {
-                Header(title: "Show Pairing QR", subtitle: "Scan this code from Android or Windows to trust this Mac.")
+                AppLogoHeader(title: "Show Pairing QR", subtitle: "Scan this code from Android or Windows to trust this Mac.")
                 QRCodeView(text: appState.pairingQRText)
                     .frame(width: 260, height: 260)
                     .accessibilityLabel("BeamDrop pairing QR code")
@@ -358,7 +358,7 @@ struct AppLogoHeader: View {
                 .resizable()
                 .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-                .accessibilityLabel("BeamDrop app icon")
+                .accessibilityLabel("BeamDrop logo")
             Header(title: title, subtitle: subtitle)
         }
     }
