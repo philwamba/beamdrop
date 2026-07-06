@@ -11,7 +11,7 @@
 | Area | Android | Windows | Required MVP behavior |
 | --- | --- | --- | --- |
 | Protocol version | `1.0` | `1.0` | Reject unsupported versions. |
-| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | New QR payloads use camelCase. |
+| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | New QR payloads use `type`, `protocolVersion`, `serviceName`, `pairingSessionId`, `deviceId`, `deviceName`, `platform`, `publicKey`, optional `endpoint`, and `expiresAtEpochMillis`. |
 | Discovery service | `_beamdrop._tcp` | `_beamdrop._tcp` | No hardcoded IPs; use discovery, QR endpoint hints, or manual fallback. |
 | Transfer frame | JSON envelope + newline + bytes | JSON envelope + newline + bytes | Same envelope field names and chunk/hash metadata. |
 | Transfer type names | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | Reject unsupported transfer types. |
@@ -19,6 +19,7 @@
 | Final hash | SHA-256 | SHA-256 | Verify before marking complete. |
 | Unknown peer | Rejected | Rejected | Pairing or explicit approval required. |
 | Revoked peer | Rejected | Rejected | Re-pairing required before trust is restored. |
+| Transfer status names | Android enum names | Windows enum names | `Queued`, `WaitingForApproval`, `Transferring`, `Verifying`, `Completed`, `Failed`, `Cancelled`, `Rejected`, `Corrupted`, `Incomplete`. |
 | Cancellation | `Cancelled` history | `Cancelled` history | User-visible cancellation state. |
 | Resume | Planned metadata | Planned metadata | Persisted cross-restart resume not complete yet. |
 
@@ -44,16 +45,16 @@
 | `TEXT` | Yes | Requires text metadata. |
 | `URL` | Yes | Requires URL metadata. |
 | `FILE` | Yes | Requires file name, MIME type, size, chunk size, chunk count, and SHA-256. |
-| `FOLDER_ARCHIVE` | Yes | Sent as an archive envelope with file metadata and final SHA-256. |
-| `IMAGE` | Yes | Requires file-style metadata and may include dimensions. |
-| `SCREENSHOT` | Yes | Requires file-style metadata and may include dimensions. |
+| `FOLDER_ARCHIVE` | Future | Not part of Android-Windows MVP wire contract. |
+| `IMAGE` | Future | Send as `FILE` for MVP if image transfer is needed. |
+| `SCREENSHOT` | Future | Send as `FILE` for MVP if screenshot transfer is needed. |
 | `CLIPBOARD_TEXT` | Yes | Must respect platform clipboard restrictions. |
-| `CLIPBOARD_IMAGE` | Yes | Requires file-style metadata and must respect platform clipboard restrictions. |
-| `PAIRING_REQUEST` | Yes | Used for pairing control messages. |
-| `PAIRING_ACCEPTED` | Yes | Used for pairing control messages. |
-| `TRANSFER_CANCEL` | Yes | Used to cancel in-progress transfer. |
-| `TRANSFER_RESUME` | Yes | Required for large files. |
-| `DEVICE_PING` | Yes | Used for reachability checks. |
+| `CLIPBOARD_IMAGE` | Future | Not part of Android-Windows MVP wire contract. |
+| `PAIRING_REQUEST` | Future | MVP pairing is QR payload plus explicit local trust approval. |
+| `PAIRING_ACCEPTED` | Future | MVP pairing is QR payload plus explicit local trust approval. |
+| `TRANSFER_CANCEL` | Future | MVP cancellation is local cancellation of the active stream. |
+| `TRANSFER_RESUME` | Future | Resume metadata exists; cross-restart resume is not complete. |
+| `DEVICE_PING` | Future | Not required for Android-Windows MVP. |
 
 ## Security Compatibility
 
@@ -63,7 +64,7 @@
 | Revoked peers | Reject before accepting transfer envelopes or content chunks. |
 | Envelope validation | Validate against schema before accepting content. |
 | Large file chunks | Default chunk size is 4 MB. |
-| Resume | Required for large files and represented with `resumeSupported` and `resumeToken`. |
+| Resume | Planned metadata exists; persisted cross-restart resume is not complete in Android-Windows MVP. |
 | File hash | Final SHA-256 must be present and verified before completion. |
 
 ## Version Negotiation

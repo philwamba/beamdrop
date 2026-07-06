@@ -66,6 +66,19 @@ The transfer envelope is camelCase JSON:
 Receivers must validate `protocolVersion`, `transferType`, sender trust state,
 chunk metadata, size, and final `sha256` before marking the transfer complete.
 
+Android and Windows MVP status values are:
+
+- `Queued`
+- `WaitingForApproval`
+- `Transferring`
+- `Verifying`
+- `Completed`
+- `Failed`
+- `Cancelled`
+- `Rejected`
+- `Corrupted`
+- `Incomplete`
+
 ## Trust States
 
 - `unknown`: no saved trust relationship.
@@ -109,6 +122,27 @@ Android and Windows MVP QR payloads use camelCase JSON with:
 Implementations may accept the older Android snake_case QR shape for migration,
 but new QR payloads must use the shared camelCase shape.
 
+Example:
+
+```json
+{
+  "type": "beamdrop_pairing",
+  "protocolVersion": "1.0",
+  "serviceName": "_beamdrop._tcp",
+  "pairingSessionId": "pair-01J2M8WQ1E6H37NZ",
+  "deviceId": "bd-windows-01",
+  "deviceName": "Windows Workstation",
+  "platform": "windows",
+  "publicKey": "base64-public-key",
+  "endpoint": {
+    "host": "192.0.2.44",
+    "port": 49320,
+    "route": "local"
+  },
+  "expiresAtEpochMillis": 1783350000000
+}
+```
+
 ## Session Establishment
 
 After discovery, manual IP entry, or QR connection:
@@ -121,48 +155,26 @@ After discovery, manual IP entry, or QR connection:
 
 All transfer sessions must use authenticated encryption.
 
-## Transfer Manifest
+## Transfer Envelope
 
-Before sending content, the sender transmits a manifest:
+For the Android-Windows MVP, the transfer envelope shown above is the transfer
+manifest. Field names are camelCase and are shared by both platforms. Senders
+must include `senderDeviceId`, `senderPublicKey`, `receiverDeviceId`, size,
+chunk metadata, and final `sha256`.
 
-```json
-{
-  "transfer_id": "random-transfer-id",
-  "sender_device_id": "sender-id",
-  "receiver_device_id": "receiver-id",
-  "created_at": "2026-07-06T00:00:00Z",
-  "kind": "files",
-  "total_bytes": 1048576,
-  "chunk_size": 1048576,
-  "items": []
-}
-```
-
-Each item includes:
-
-- `item_id`.
-- `kind`: file, folder, text, link, screenshot, or clipboard.
-- `display_name`.
-- `relative_path` for folders.
-- `byte_length`.
-- `mime_type` where known.
-- `file_hash` for file-like content.
-- `metadata_hash` when metadata integrity matters.
+Future folder and multi-item transfers may add an `items` array, but Android and
+Windows MVP receivers must reject unsupported shapes instead of silently treating
+them as successful transfers.
 
 ## Chunking
 
 All large file transfers must be chunked. The implementation should define a
 large-file threshold, but the protocol must support chunking for any file.
 
-Chunk message fields:
-
-- `transfer_id`.
-- `item_id`.
-- `chunk_index`.
-- `offset`.
-- `length`.
-- `chunk_hash` when enabled.
-- `payload`.
+The Android-Windows MVP does not wrap each chunk in JSON. After the newline
+terminated envelope, payload bytes are streamed in buffers up to `chunkSize`
+bytes. Receivers validate total byte count against `sizeBytes`; partial payloads
+must be recorded as `Incomplete`.
 
 Chunks must be written to a staging area until the full file hash is verified.
 

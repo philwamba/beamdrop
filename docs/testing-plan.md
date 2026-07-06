@@ -50,6 +50,12 @@ Android-Windows MVP coverage:
 - Unknown devices are rejected.
 - Revoked devices are rejected.
 
+Current automated coverage verifies the shared QR JSON shape, shared transfer
+envelope shape, 4 MB chunk metadata, final SHA-256 behavior, cancellation/failure
+history states, unknown-peer rejection, and revoked-peer rejection in platform
+core tests. Full device-to-device UI execution must still be verified with the
+manual local-network checklist below on a Windows PC and Android device.
+
 ### Platform Tests
 
 Android:

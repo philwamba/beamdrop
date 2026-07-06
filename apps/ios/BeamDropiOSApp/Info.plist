@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>BeamDrop</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>BeamDrop finds and transfers to trusted devices on your local network.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_beamdrop._tcp</string>
+    </array>
+    <key>NSCameraUsageDescription</key>
+    <string>BeamDrop uses the camera only to scan pairing QR codes.</string>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+</dict>
+</plist>

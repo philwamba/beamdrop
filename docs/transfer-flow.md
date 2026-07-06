@@ -117,10 +117,14 @@ finished UI behavior.
 
 File hash verification is required before success. If verification fails:
 
-- Mark transfer failed.
+- Mark transfer `Corrupted`.
 - Do not expose staged file as complete.
 - Offer retry from the sender.
 - Keep diagnostics suitable for support logs.
+
+If the payload ends before `sizeBytes`, mark transfer `Incomplete`. If the user
+cancels, mark transfer `Cancelled`. If the network or file system fails for any
+other reason, mark transfer `Failed`.
 
 ## Progress UI Requirements
 
@@ -153,6 +157,9 @@ network, using manual IP, or using a future relay.
 - Hash verification failed.
 - Unsupported protocol version.
 - Device trust revoked.
+- Unknown peer rejected.
+- Incomplete payload.
+- Transfer cancelled.
 
 Each error must include a next action such as retry, resume, diagnostics, change
 destination, pair again, or cancel.
