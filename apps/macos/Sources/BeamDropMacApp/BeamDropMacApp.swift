@@ -27,6 +27,7 @@ struct BeamDropMacApp: App {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState? {
         didSet {

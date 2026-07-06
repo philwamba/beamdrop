@@ -146,7 +146,7 @@ final class BeamDropMacCoreTests: XCTestCase {
     }
 
     func testClipboardPolicyRequiresUserControlledSharingAndBlocksSensitiveText() {
-        XCTAssertThrowsNoError(try ClipboardPolicy.canSend(text: "hello", settings: ClipboardSettings(sharingEnabled: true)).get())
+        XCTAssertNoThrow(try ClipboardPolicy.canSend(text: "hello", settings: ClipboardSettings(sharingEnabled: true)).get())
         XCTAssertThrowsError(try ClipboardPolicy.canSend(text: "hello", settings: ClipboardSettings(sharingEnabled: false)).get())
         XCTAssertThrowsError(try ClipboardPolicy.canSend(text: "api_key = abc123", settings: ClipboardSettings(sharingEnabled: true)).get())
     }

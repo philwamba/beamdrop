@@ -178,7 +178,7 @@ public final class TransferService {
         completion: @escaping @Sendable (Result<TransferEnvelope, Error>) -> Void
     ) {
         connection.start(queue: queue)
-        readHeader(connection: connection, buffer: Data()) { [weak self] result in
+        readHeader(connection, buffer: Data()) { [weak self] result in
             guard let self else { return }
             do {
                 let header = try result.get()

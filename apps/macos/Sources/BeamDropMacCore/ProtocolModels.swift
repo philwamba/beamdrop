@@ -204,7 +204,7 @@ public struct TransferEnvelope: Codable, Equatable, Sendable {
     }
 }
 
-extension ISO8601DateFormatter {
+public extension ISO8601DateFormatter {
     static let beamDrop: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
