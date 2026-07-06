@@ -3,7 +3,7 @@ import { Test } from "@nestjs/testing";
 import request = require("supertest");
 import { AppModule } from "../src/app.module";
 
-describe("signaling health", () => {
+describe("relay health", () => {
   let app: INestApplication;
 
   beforeEach(async () => {
@@ -25,9 +25,9 @@ describe("signaling health", () => {
       .expect(({ body }) => {
         expect(body).toMatchObject({
           status: "ok",
-          service: "beamdrop-signaling",
+          service: "beamdrop-relay",
           localMvpRequired: false,
-          contentHandling: "metadata-and-signaling-only"
+          contentHandling: "encrypted-temporary-blobs-only"
         });
       });
   });
