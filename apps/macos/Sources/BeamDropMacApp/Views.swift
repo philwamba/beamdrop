@@ -4,6 +4,20 @@ import CoreImage.CIFilterBuiltins
 import SwiftUI
 import UniformTypeIdentifiers
 
+struct OnboardingView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Header(title: "Onboarding", subtitle: "Set up BeamDrop for private local transfer.")
+            EmptyState(title: "Pair With QR", message: "Trust is explicit. Unknown devices cannot send content until approved.")
+            EmptyState(title: "Send Locally", message: "BeamDrop uses the local network when possible and does not require cloud upload for MVP transfers.")
+            EmptyState(title: "Clipboard Is Manual", message: "Clipboard sharing is user-controlled from the menu bar or main window.")
+            EmptyState(title: "Network Fallback", message: "If Bonjour discovery is blocked, use QR pairing or a manual endpoint.")
+            Spacer()
+        }
+        .padding(24)
+    }
+}
+
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @State private var isDropTargeted = false

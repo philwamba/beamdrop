@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
 
 private enum class Screen {
     Home,
+    Onboarding,
     Nearby,
     Pair,
     Scan,
@@ -254,6 +255,7 @@ private fun BeamDropApp(
             onSendFile = { screen = Screen.SendFile },
             onSettings = { screen = Screen.Settings },
             onAbout = { screen = Screen.About },
+            onOnboarding = { screen = Screen.Onboarding },
             onHistory = {
                 reloadHistory()
                 screen = Screen.History
@@ -268,6 +270,11 @@ private fun BeamDropApp(
                 deviceNameRepository.setDeviceName(it)
                 identity = identityRepository.getOrCreateIdentity()
             },
+        )
+
+        Screen.Onboarding -> OnboardingScreen(
+            onBack = { screen = Screen.Home },
+            onPair = { screen = Screen.Pair },
         )
 
         Screen.Nearby -> NearbyDevicesScreen(
@@ -409,6 +416,7 @@ private fun HomeScreen(
     onHistory: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
+    onOnboarding: () -> Unit,
     onNameSaved: (String) -> Unit,
 ) {
     var name by remember(identity.displayName) { mutableStateOf(identity.displayName) }
@@ -532,8 +540,13 @@ private fun HomeScreen(
             }
 
             item {
-                TextButton(onClick = onAbout, modifier = Modifier.fillMaxWidth()) {
-                    Text("About BeamDrop")
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onOnboarding, modifier = Modifier.weight(1f)) {
+                        Text("Onboarding")
+                    }
+                    TextButton(onClick = onAbout, modifier = Modifier.weight(1f)) {
+                        Text("About BeamDrop")
+                    }
                 }
             }
 
@@ -544,6 +557,37 @@ private fun HomeScreen(
                         Spacer(Modifier.height(8.dp))
                         HistoryRow(history.first())
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OnboardingScreen(onBack: () -> Unit, onPair: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Onboarding") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { SectionSurface { Text("Private Local Transfer", fontWeight = FontWeight.SemiBold); Text("Send text and files between devices you trust without requiring login or cloud upload.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Pair With QR", fontWeight = FontWeight.SemiBold); Text("Trust is explicit. Unknown devices cannot send content until approved.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item { SectionSurface { Text("Clipboard Is Manual", fontWeight = FontWeight.SemiBold); Text("Android clipboard sending is user-triggered and respects platform restrictions.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item {
+                Button(onClick = onPair, modifier = Modifier.fillMaxWidth()) {
+                    Text("Pair First Device")
                 }
             }
         }

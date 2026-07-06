@@ -6,22 +6,22 @@
 | --- | --- | --- |
 | `1.0` | Initial | First BeamDrop schema contract for discovery, pairing, transfer envelopes, progress, results, and errors. |
 
-## Android-Windows-macOS MVP Compatibility
+## Android-Windows-macOS-iOS MVP Compatibility
 
-| Area | Android | Windows | macOS | Required MVP behavior |
-| --- | --- | --- | --- | --- |
-| Protocol version | `1.0` | `1.0` | `1.0` | Reject unsupported versions. |
-| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | camelCase | New QR payloads use `type`, `protocolVersion`, `serviceName`, `pairingSessionId`, `deviceId`, `deviceName`, `platform`, `publicKey`, optional `endpoint`, and `expiresAtEpochMillis`. |
-| Discovery service | `_beamdrop._tcp` | `_beamdrop._tcp` | `_beamdrop._tcp` | No hardcoded IPs; use discovery, QR endpoint hints, or manual fallback. |
-| Transfer frame | JSON envelope + newline + bytes | JSON envelope + newline + bytes | JSON envelope + newline + bytes | Same envelope field names and chunk/hash metadata. |
-| Transfer type names | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | Reject unsupported transfer types. |
-| Chunk size | 4 MB | 4 MB | 4 MB | Never load large files fully into memory. |
-| Final hash | SHA-256 | SHA-256 | SHA-256 | Verify before marking complete. |
-| Unknown peer | Rejected | Rejected | Rejected | Pairing or explicit approval required. |
-| Revoked peer | Rejected | Rejected | Rejected | Re-pairing required before trust is restored. |
-| Transfer status names | Android enum names | Windows enum names | Swift enum raw values | `Queued`, `WaitingForApproval`, `Transferring`, `Verifying`, `Completed`, `Failed`, `Cancelled`, `Rejected`, `Corrupted`, `Incomplete`. |
-| Cancellation | `Cancelled` history | `Cancelled` history | `Cancelled` history | User-visible cancellation state. |
-| Resume | Planned metadata | Planned metadata | Planned metadata | Persisted cross-restart resume not complete yet. |
+| Area | Android | Windows | macOS | iOS | Required MVP behavior |
+| --- | --- | --- | --- | --- | --- |
+| Protocol version | `1.0` | `1.0` | `1.0` | `1.0` | Reject unsupported versions. |
+| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | camelCase | camelCase | New QR payloads use `type`, `protocolVersion`, `serviceName`, `pairingSessionId`, `deviceId`, `deviceName`, `platform`, `publicKey`, optional `endpoint`, and `expiresAtEpochMillis`. |
+| Discovery service | `_beamdrop._tcp` | `_beamdrop._tcp` | `_beamdrop._tcp` | `_beamdrop._tcp` | No hardcoded IPs; use discovery, QR endpoint hints, or manual fallback. |
+| Transfer frame | JSON envelope + newline + bytes | JSON envelope + newline + bytes | JSON envelope + newline + bytes | JSON envelope + newline + bytes | Same envelope field names and chunk/hash metadata. |
+| Transfer type names | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | Reject unsupported transfer types. |
+| Chunk size | 4 MB | 4 MB | 4 MB | 4 MB | Never load large files fully into memory. |
+| Final hash | SHA-256 | SHA-256 | SHA-256 | SHA-256 | Verify before marking complete. |
+| Unknown peer | Rejected | Rejected | Rejected | Rejected | Pairing or explicit approval required. |
+| Revoked peer | Rejected | Rejected | Rejected | Rejected | Re-pairing required before trust is restored. |
+| Transfer status names | Android enum names | Windows enum names | Swift enum raw values | Swift enum raw values | `Queued`, `WaitingForApproval`, `Transferring`, `Verifying`, `Completed`, `Failed`, `Cancelled`, `Rejected`, `Corrupted`, `Incomplete`. |
+| Cancellation | `Cancelled` history | `Cancelled` history | `Cancelled` history | `Cancelled` history | User-visible cancellation state. |
+| Resume | Planned metadata | Planned metadata | Planned metadata | Planned metadata | Persisted cross-restart resume not complete yet. |
 
 ## macOS MVP Implementation Notes
 
@@ -33,6 +33,18 @@
 | Receive path | Local TCP listener accepts `JSON envelope + newline + payload bytes`, checks trusted peer state, requires approval unless auto-accept is enabled, writes files to Downloads, and verifies SHA-256. |
 | Clipboard | Manual send only. Clipboard sharing can be paused, disabled, and sensitive-looking text is blocked from clipboard-send action. |
 | Security | Device identity is generated with CryptoKit and persisted through a Keychain abstraction. |
+
+## iOS MVP Implementation Notes
+
+| Area | iOS behavior |
+| --- | --- |
+| Native stack | Swift, SwiftUI, Network.framework, Bonjour, Keychain, Share Extension, App Intents. |
+| Permissions | Declares `NSLocalNetworkUsageDescription`, `_beamdrop._tcp` Bonjour service, and camera usage for QR scanning. |
+| Pairing | Shows QR payloads, scans QR with camera, and validates the shared camelCase pairing JSON. |
+| Transfer contract | Uses the same `JSON envelope + newline + payload bytes` contract and 4 MB chunk size as Android, Windows, and macOS. |
+| Clipboard | Manual only through Paste, Share Sheet, or App Intents. No silent background clipboard monitoring. |
+| Share Extension | Accepts files, photos, text, and links and hands them to the app through App Group storage. |
+| Security | Device identity is generated with CryptoKit and persisted through a Keychain abstraction. Unknown and revoked peers are rejected. |
 
 ## Platform Compatibility
 

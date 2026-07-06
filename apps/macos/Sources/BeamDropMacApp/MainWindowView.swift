@@ -16,6 +16,8 @@ struct MainWindowView: View {
         } detail: {
             Group {
                 switch selection {
+                case .onboarding:
+                    OnboardingView()
                 case .home:
                     HomeView()
                 case .nearby:
@@ -53,6 +55,7 @@ struct MainWindowView: View {
 }
 
 private enum SidebarSection: String, CaseIterable, Identifiable {
+    case onboarding
     case home
     case nearby
     case pairing
@@ -66,6 +69,7 @@ private enum SidebarSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .onboarding: "Onboarding"
         case .home: "Home"
         case .nearby: "Nearby Devices"
         case .pairing: "Pair New Device"
@@ -80,6 +84,7 @@ private enum SidebarSection: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .onboarding: "sparkles"
         case .home: "paperplane"
         case .nearby: "antenna.radiowaves.left.and.right"
         case .pairing: "qrcode"

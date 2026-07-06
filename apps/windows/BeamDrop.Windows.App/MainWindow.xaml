@@ -11,6 +11,7 @@
             PaneDisplayMode="LeftCompact"
             SelectionChanged="ShellNavigation_SelectionChanged">
             <NavigationView.MenuItems>
+                <NavigationViewItem Content="Onboarding" Icon="Play" Tag="Onboarding" />
                 <NavigationViewItem Content="Home" Icon="Home" Tag="Home" />
                 <NavigationViewItem Content="Nearby Devices" Icon="Find" Tag="NearbyDevices" />
                 <NavigationViewItem Content="Pair New Device" Icon="Contact" Tag="PairDevice" />

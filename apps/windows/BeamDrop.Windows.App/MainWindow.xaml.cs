@@ -29,6 +29,7 @@ public sealed partial class MainWindow : Window
 
         ShellFrame.Navigate(tag switch
         {
+            "Onboarding" => typeof(OnboardingPage),
             "Home" => typeof(HomePage),
             "NearbyDevices" => typeof(NearbyDevicesPage),
             "PairDevice" => typeof(PairDevicePage),
