@@ -1,0 +1,20 @@
+name: iOS
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Swift Package Tests
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Test iOS package
+        working-directory: apps/ios
+        run: swift test

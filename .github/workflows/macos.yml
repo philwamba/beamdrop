@@ -1,0 +1,24 @@
+name: macOS
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Test macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Test macOS package
+        working-directory: apps/macos
+        run: swift test
+
+      - name: Build macOS package
+        working-directory: apps/macos
+        run: swift build
