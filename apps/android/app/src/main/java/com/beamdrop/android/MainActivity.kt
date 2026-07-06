@@ -74,6 +74,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -433,7 +434,17 @@ private fun HomeScreen(
         ) {
             item {
                 SectionSurface {
-                    Text("This device", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Image(
+                            painter = painterResource(id = R.mipmap.ic_launcher),
+                            contentDescription = "BeamDrop app icon",
+                            modifier = Modifier.size(44.dp),
+                        )
+                        Column {
+                            Text("This Device", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Native Android app", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = name,

@@ -94,6 +94,27 @@ designed as mandatory cloud storage. If a relay is used in the future, content
 must remain end-to-end protected and the UI must clearly show that the transfer
 is relayed.
 
+Current optional server scaffolds:
+
+- `server/beamdrop-signaling`: NestJS WebSocket gateway for device presence,
+  pairing signaling placeholders, transfer signaling placeholders, rate limiting
+  structure, logging, and `GET /health`.
+- `server/beamdrop-relay`: NestJS HTTP service for expiring transfer tokens and
+  temporary encrypted blob upload/download. The relay stores metadata-only
+  records and opaque encrypted bytes in future S3/R2-compatible storage.
+- `server/docker-compose.yml`: local PostgreSQL, Redis, MinIO, signaling, and
+  relay wiring for future integration work.
+
+Relay storage rules:
+
+- Clients encrypt before upload.
+- Server stores encrypted temporary blobs only.
+- Server does not inspect plaintext or decrypt content.
+- Tokens and blobs expire.
+- Cleanup deletes expired relay objects.
+- Logs must not include file contents, clipboard contents, keys, or decrypted
+  metadata.
+
 ## Device Identity
 
 Each BeamDrop install should have a stable device identity:

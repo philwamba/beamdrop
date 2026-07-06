@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 struct OnboardingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Header(title: "Onboarding", subtitle: "Set up BeamDrop for private local transfer.")
+            AppLogoHeader(title: "Onboarding", subtitle: "Set up BeamDrop for private local transfer.")
             EmptyState(title: "Pair With QR", message: "Trust is explicit. Unknown devices cannot send content until approved.")
             EmptyState(title: "Send Locally", message: "BeamDrop uses the local network when possible and does not require cloud upload for MVP transfers.")
             EmptyState(title: "Clipboard Is Manual", message: "Clipboard sharing is user-controlled from the menu bar or main window.")
@@ -25,7 +25,7 @@ struct HomeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Header(title: "BeamDrop", subtitle: "Private local transfer for trusted devices.")
+            AppLogoHeader(title: "BeamDrop", subtitle: "Private local transfer for trusted devices.")
 
             PeerPicker()
 
@@ -338,13 +338,29 @@ struct NetworkDiagnosticsView: View {
 struct AboutView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Header(title: "About", subtitle: "BeamDrop for macOS")
+            AppLogoHeader(title: "About", subtitle: "BeamDrop for macOS")
             EmptyState(title: "Native App", message: "Built with Swift, SwiftUI, AppKit, Network.framework, Bonjour, NSPasteboard, and Keychain.")
             EmptyState(title: "Protocol", message: "Uses BeamDrop protocol 1.0 with 4 MB chunks and final SHA-256 verification.")
             EmptyState(title: "Release Status", message: "MVP development. Production downloads will be published after signing, notarization, and release testing.")
             Spacer()
         }
         .padding(24)
+    }
+}
+
+struct AppLogoHeader: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image("BeamDropLogo", bundle: .module)
+                .resizable()
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .accessibilityLabel("BeamDrop app icon")
+            Header(title: title, subtitle: subtitle)
+        }
     }
 }
 

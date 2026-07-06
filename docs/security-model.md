@@ -112,6 +112,34 @@ make the route visible because relay may affect performance and metadata.
 
 Relay and signaling services must not be required for local MVP.
 
+Optional relay requirements:
+
+- File encryption happens client-side before upload.
+- Relay stores encrypted temporary blobs only.
+- Relay records metadata only: transfer ID, object key, encrypted size, content
+  type, status, sender/receiver device IDs where needed, and expiration time.
+- Relay must enforce maximum encrypted blob size.
+- Relay tokens must expire and be unguessable.
+- Expired blobs must be removed by cleanup.
+- Relay logs must not contain plaintext content, clipboard content, encryption
+  keys, or decrypted metadata.
+
+Optional signaling requirements:
+
+- Signaling transports presence and coordination metadata only.
+- Signaling must not carry plaintext files or clipboard content.
+- Signaling events must be rate limited and logged without sensitive payloads.
+- Auth/session handling is a placeholder until account or trust-bound remote
+  identity is designed.
+
+Abuse prevention notes:
+
+- Rate limit token creation, upload/download attempts, and signaling events.
+- Enforce size caps before accepting uploads.
+- Expire relay tokens aggressively.
+- Track failed token and upload attempts for future abuse detection.
+- Prefer per-device quotas before enabling any public relay deployment.
+
 ## Permission Explanations
 
 Before OS permission prompts, BeamDrop must explain:

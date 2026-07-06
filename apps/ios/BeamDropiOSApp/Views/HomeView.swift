@@ -8,6 +8,11 @@ struct HomeView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
+                    Image("BeamDropLogo")
+                        .resizable()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .accessibilityLabel("BeamDrop app icon")
                     Text(container.identity.deviceName)
                         .font(.title2.bold())
                     Text("iPhone · protocol \(container.identity.protocolVersion)")

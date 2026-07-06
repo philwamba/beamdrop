@@ -50,6 +50,18 @@ network transfer.
 - Staged partial files are protected from accidental exposure.
 - Logs do not contain file contents or clipboard contents.
 
+Optional server release gates:
+
+- Local transfer still works with signaling and relay services offline.
+- Signaling service does not transport plaintext files or clipboard contents.
+- Relay service accepts encrypted blobs only and does not inspect plaintext.
+- Relay tokens expire.
+- Relay max file size is enforced.
+- Relay cleanup deletes expired blobs.
+- Rate limiting is enabled for signaling and relay endpoints.
+- Server logs exclude file contents, clipboard contents, encryption keys, and
+  decrypted metadata.
+
 ## Platform Readiness
 
 Android:
@@ -113,3 +125,5 @@ Do not release if:
 - Large transfer resume is missing.
 - iPhone clipboard behavior implies silent background monitoring.
 - Android clipboard behavior violates OS restrictions.
+- Relay or signaling is required for same-network local transfer.
+- Relay stores plaintext user content.

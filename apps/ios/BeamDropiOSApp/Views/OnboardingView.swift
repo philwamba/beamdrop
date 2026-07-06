@@ -25,9 +25,17 @@ struct OnboardingView: View {
 
     private func onboardingPage(_ title: String, _ text: String, _ symbol: String) -> some View {
         VStack(spacing: 20) {
-            Image(systemName: symbol)
-                .font(.system(size: 72))
-                .foregroundStyle(.blue)
+            if title == "BeamDrop" {
+                Image("BeamDropLogo")
+                    .resizable()
+                    .frame(width: 88, height: 88)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .accessibilityLabel("BeamDrop app icon")
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: 72))
+                    .foregroundStyle(.blue)
+            }
             Text(title)
                 .font(.largeTitle.bold())
             Text(text)

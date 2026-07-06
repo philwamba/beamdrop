@@ -109,6 +109,20 @@ BeamDrop must include:
 - Network diagnostics.
 - Clear explanation that local discovery may be blocked by the network.
 
+## Optional Remote Relay
+
+Relay and signaling servers are future remote-transfer support, not platform
+requirements for the local MVP. Platform apps must continue to support local
+pairing and local transfer without login or server availability.
+
+When a relay is used in a future release:
+
+- UI must label the route as relayed.
+- Clients must encrypt before upload.
+- Servers must store encrypted temporary blobs only.
+- Server availability must not be described as required for same-network local
+  transfer.
+
 ## Permission Explanation Requirements
 
 Every platform must explain permissions before OS prompts:
