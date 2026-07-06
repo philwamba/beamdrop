@@ -1,4 +1,8 @@
-# BeamDrop
+<p align="center">
+  <img src="design/assets/logo.png" alt="BeamDrop logo" width="120" height="120">
+</p>
+
+<h1 align="center">BeamDrop</h1>
 
 Native private device transfer for Android, iPhone, Windows, and macOS.
 
@@ -154,3 +158,7 @@ foundation.
 
 The project is not production-released yet. Public downloads will be added only
 after release builds are signed, tested, and documented.
+
+---
+
+© 2026 BeamDrop contributors. Released under the [MIT License](LICENSE).
