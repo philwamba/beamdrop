@@ -14,7 +14,10 @@ let package = Package(
         .target(name: "BeamDropMacCore"),
         .executableTarget(
             name: "BeamDropMacApp",
-            dependencies: ["BeamDropMacCore"]
+            dependencies: ["BeamDropMacCore"],
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "BeamDropMacCoreTests",

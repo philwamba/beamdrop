@@ -4,6 +4,8 @@
 <dict>
     <key>CFBundleDisplayName</key>
     <string>BeamDrop</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>BeamDrop finds and transfers to trusted devices on your local network.</string>
     <key>NSBonjourServices</key>
