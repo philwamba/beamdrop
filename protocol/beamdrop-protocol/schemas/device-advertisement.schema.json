@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/device-advertisement.schema.json",
+  "title": "BeamDrop Device Advertisement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "serviceName",
+    "deviceId",
+    "deviceName",
+    "platform",
+    "publicKey",
+    "features",
+    "port"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "serviceName": {
+      "type": "string",
+      "const": "_beamdrop._tcp"
+    },
+    "deviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "deviceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["android", "ios", "macos", "windows"]
+    },
+    "publicKey": {
+      "type": "string",
+      "description": "Base64-encoded device identity public key.",
+      "minLength": 32,
+      "maxLength": 256
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "TEXT",
+          "URL",
+          "FILE",
+          "FOLDER_ARCHIVE",
+          "IMAGE",
+          "SCREENSHOT",
+          "CLIPBOARD_TEXT",
+          "CLIPBOARD_IMAGE",
+          "PAIRING_REQUEST",
+          "PAIRING_ACCEPTED",
+          "TRANSFER_CANCEL",
+          "TRANSFER_RESUME",
+          "DEVICE_PING"
+        ]
+      }
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "addresses": {
+      "type": "array",
+      "description": "Optional local address hints.",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 64
+      }
+    },
+    "lastUpdatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "protocolVersion": "1.0",
+  "requestId": "pair-req-01J2M8S7Q8A2CPN1P8X5A3K9DK",
+  "pairingSessionId": "pair-session-01J2M8S2D3N7H6S9ZFV4R7QH2M",
+  "createdAt": "2026-07-06T14:22:00Z",
+  "expiresAt": "2026-07-06T14:24:00Z",
+  "senderDeviceId": "bd-ios-01J2M8R1N6NNYV6S5JX5H3FA0C",
+  "senderDeviceName": "Will's iPhone",
+  "senderPlatform": "ios",
+  "senderPublicKey": "MCowBQYDK2VuAyEAq37Fsc1O4u93fd1zCIh0zUg6JRZpyc6B2yU0ucqk7E0=",
+  "receiverDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "qrNonce": "qrnonce-01J2M8S55APTE6X2W2PQ3RTBQW",
+  "endpointHint": {
+    "serviceName": "_beamdrop._tcp",
+    "host": "192.168.1.42",
+    "port": 49320
+  }
+}

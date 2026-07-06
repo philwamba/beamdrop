@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/pairing-response.schema.json",
+  "title": "BeamDrop Pairing Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "requestId",
+    "pairingSessionId",
+    "createdAt",
+    "accepted",
+    "responderDeviceId",
+    "responderDeviceName",
+    "responderPlatform",
+    "responderPublicKey"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "pairingSessionId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "responderDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "responderDeviceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "responderPlatform": {
+      "type": "string",
+      "enum": ["android", "ios", "macos", "windows"]
+    },
+    "responderPublicKey": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 256
+    },
+    "trustFingerprint": {
+      "type": "string",
+      "description": "Short human-readable fingerprint shown for confirmation.",
+      "minLength": 8,
+      "maxLength": 64
+    },
+    "rejectionReason": {
+      "type": "string",
+      "maxLength": 240
+    }
+  }
+}

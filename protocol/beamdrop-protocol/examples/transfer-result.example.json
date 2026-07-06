@@ -1,0 +1,12 @@
+{
+  "protocolVersion": "1.0",
+  "transferId": "tx-file-01J2M8X0E11Y0Y9QVT38A0BHR5",
+  "senderDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "receiverDeviceId": "bd-windows-01J2M8W7Z6HD1DYQKFE1X6V904",
+  "completedAt": "2026-07-06T14:35:19Z",
+  "result": "COMPLETED",
+  "hashVerified": true,
+  "sha256": "6f1d2d9a8b0f73643d20e6f8bdbbcf46c2cf4bfb2f8b2c4ed4db70d49c9b3b2a",
+  "savedAs": "Downloads/BeamDrop-Q3-demo.mov",
+  "message": "Transfer completed and final file hash verified."
+}

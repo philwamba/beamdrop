@@ -1,0 +1,12 @@
+{
+  "protocolVersion": "1.0",
+  "requestId": "pair-req-01J2M8S7Q8A2CPN1P8X5A3K9DK",
+  "pairingSessionId": "pair-session-01J2M8S2D3N7H6S9ZFV4R7QH2M",
+  "createdAt": "2026-07-06T14:22:11Z",
+  "accepted": true,
+  "responderDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "responderDeviceName": "Will's MacBook Pro",
+  "responderPlatform": "macos",
+  "responderPublicKey": "MCowBQYDK2VuAyEAtqzFJY2dveH2WrN9q9NqbcMTFq0QnV8DScjQ7kSy3xY=",
+  "trustFingerprint": "7C9A 2E41 8F03"
+}

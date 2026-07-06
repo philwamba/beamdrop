@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/transfer-envelope.schema.json",
+  "title": "BeamDrop Transfer Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "transferId",
+    "transferType",
+    "senderDeviceId",
+    "receiverDeviceId",
+    "createdAt",
+    "payloadMetadata"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "transferId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "transferType": {
+      "type": "string",
+      "enum": [
+        "TEXT",
+        "URL",
+        "FILE",
+        "FOLDER_ARCHIVE",
+        "IMAGE",
+        "SCREENSHOT",
+        "CLIPBOARD_TEXT",
+        "CLIPBOARD_IMAGE",
+        "PAIRING_REQUEST",
+        "PAIRING_ACCEPTED",
+        "TRANSFER_CANCEL",
+        "TRANSFER_RESUME",
+        "DEVICE_PING"
+      ]
+    },
+    "senderDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "receiverDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "requiresApproval": {
+      "type": "boolean",
+      "default": true
+    },
+    "resumeSupported": {
+      "type": "boolean",
+      "default": false
+    },
+    "payloadMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "textPreview": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 4096
+        },
+        "fileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 127
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chunkSize": {
+          "type": "integer",
+          "description": "Default is 4 MB.",
+          "default": 4194304,
+          "minimum": 1
+        },
+        "totalChunks": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "folderName": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "itemCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "imageWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "imageHeight": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resumeToken": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 256
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "transferType": {
+            "enum": ["FILE", "IMAGE", "SCREENSHOT", "CLIPBOARD_IMAGE", "FOLDER_ARCHIVE"]
+          }
+        }
+      },
+      "then": {
+        "required": ["resumeSupported"],
+        "properties": {
+          "resumeSupported": {
+            "const": true
+          },
+          "payloadMetadata": {
+            "required": [
+              "fileName",
+              "mimeType",
+              "sizeBytes",
+              "chunkSize",
+              "totalChunks",
+              "sha256"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transferType": {
+            "enum": ["FILE", "FOLDER_ARCHIVE"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payloadMetadata": {
+            "required": [
+              "fileName",
+              "mimeType",
+              "sizeBytes",
+              "chunkSize",
+              "totalChunks",
+              "sha256"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transferType": {
+            "enum": ["TEXT", "CLIPBOARD_TEXT"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payloadMetadata": {
+            "required": ["textPreview", "sizeBytes"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transferType": {
+            "const": "URL"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payloadMetadata": {
+            "required": ["url", "sizeBytes"]
+          }
+        }
+      }
+    }
+  ]
+}

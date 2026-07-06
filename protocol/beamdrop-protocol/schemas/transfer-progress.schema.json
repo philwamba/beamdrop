@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/transfer-progress.schema.json",
+  "title": "BeamDrop Transfer Progress",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "transferId",
+    "senderDeviceId",
+    "receiverDeviceId",
+    "updatedAt",
+    "status",
+    "bytesTransferred",
+    "totalBytes"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "transferId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "senderDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "receiverDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "QUEUED",
+        "WAITING_FOR_APPROVAL",
+        "TRANSFERRING",
+        "PAUSED",
+        "RESUMING",
+        "VERIFYING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELED"
+      ]
+    },
+    "bytesTransferred": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "chunkIndex": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalChunks": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "speedBytesPerSecond": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "resumeSupported": {
+      "type": "boolean"
+    },
+    "verification": {
+      "type": "string",
+      "enum": ["NOT_STARTED", "IN_PROGRESS", "PASSED", "FAILED"]
+    }
+  }
+}

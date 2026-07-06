@@ -1,0 +1,26 @@
+{
+  "protocolVersion": "1.0",
+  "serviceName": "_beamdrop._tcp",
+  "deviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "deviceName": "Will's MacBook Pro",
+  "platform": "macos",
+  "publicKey": "MCowBQYDK2VuAyEAtqzFJY2dveH2WrN9q9NqbcMTFq0QnV8DScjQ7kSy3xY=",
+  "features": [
+    "TEXT",
+    "URL",
+    "FILE",
+    "FOLDER_ARCHIVE",
+    "IMAGE",
+    "SCREENSHOT",
+    "CLIPBOARD_TEXT",
+    "CLIPBOARD_IMAGE",
+    "PAIRING_REQUEST",
+    "PAIRING_ACCEPTED",
+    "TRANSFER_CANCEL",
+    "TRANSFER_RESUME",
+    "DEVICE_PING"
+  ],
+  "port": 49320,
+  "addresses": ["192.168.1.42", "fe80::aede:48ff:fe00:1122"],
+  "lastUpdatedAt": "2026-07-06T14:20:32Z"
+}

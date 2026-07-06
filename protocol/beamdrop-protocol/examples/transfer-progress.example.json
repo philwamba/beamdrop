@@ -1,0 +1,15 @@
+{
+  "protocolVersion": "1.0",
+  "transferId": "tx-file-01J2M8X0E11Y0Y9QVT38A0BHR5",
+  "senderDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "receiverDeviceId": "bd-windows-01J2M8W7Z6HD1DYQKFE1X6V904",
+  "updatedAt": "2026-07-06T14:27:42Z",
+  "status": "TRANSFERRING",
+  "bytesTransferred": 71303168,
+  "totalBytes": 187904819,
+  "chunkIndex": 16,
+  "totalChunks": 45,
+  "speedBytesPerSecond": 23592960,
+  "resumeSupported": true,
+  "verification": "NOT_STARTED"
+}

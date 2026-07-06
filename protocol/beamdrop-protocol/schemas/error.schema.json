@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/error.schema.json",
+  "title": "BeamDrop Protocol Error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "errorId",
+    "createdAt",
+    "code",
+    "message"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "errorId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "transferId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "peerDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN_PEER_REJECTED",
+        "REVOKED_PEER_REJECTED",
+        "PAIRING_REQUIRED",
+        "PAIRING_EXPIRED",
+        "UNSUPPORTED_PROTOCOL_VERSION",
+        "UNSUPPORTED_PLATFORM",
+        "UNSUPPORTED_TRANSFER_TYPE",
+        "INVALID_ENVELOPE",
+        "MISSING_FILE_METADATA",
+        "HASH_VERIFICATION_FAILED",
+        "TRANSFER_CANCELED",
+        "RESUME_NOT_AVAILABLE",
+        "RECEIVER_STORAGE_UNAVAILABLE",
+        "PERMISSION_DENIED",
+        "NETWORK_UNREACHABLE"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "retryable": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

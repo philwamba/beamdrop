@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/transfer-result.schema.json",
+  "title": "BeamDrop Transfer Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "transferId",
+    "senderDeviceId",
+    "receiverDeviceId",
+    "completedAt",
+    "result",
+    "hashVerified"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "transferId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "senderDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "receiverDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["ACCEPTED", "COMPLETED", "REJECTED", "FAILED", "CANCELED"]
+    },
+    "hashVerified": {
+      "type": "boolean"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "savedAs": {
+      "type": "string",
+      "maxLength": 1024
+    },
+    "errorCode": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 240
+    }
+  }
+}

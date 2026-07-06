@@ -1,0 +1,14 @@
+{
+  "protocolVersion": "1.0",
+  "transferId": "tx-text-01J2M8VMM8RA6Q3EGK5QE5YB7J",
+  "transferType": "TEXT",
+  "senderDeviceId": "bd-ios-01J2M8R1N6NNYV6S5JX5H3FA0C",
+  "receiverDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "createdAt": "2026-07-06T14:25:04Z",
+  "requiresApproval": false,
+  "resumeSupported": false,
+  "payloadMetadata": {
+    "textPreview": "Pick up the presentation from the shared drive and send the final PDF.",
+    "sizeBytes": 72
+  }
+}

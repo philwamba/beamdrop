@@ -1,0 +1,42 @@
+<Page
+    x:Class="BeamDrop.Windows.App.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer>
+        <StackPanel Spacing="24" Padding="36">
+            <StackPanel Spacing="6">
+                <TextBlock Text="BeamDrop" Style="{StaticResource PageTitleTextBlockStyle}" />
+                <TextBlock Text="Local-first transfer for trusted personal devices." Style="{StaticResource MutedTextBlockStyle}" />
+            </StackPanel>
+
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource DeviceCardStyle}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="This PC" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                        <TextBlock Text="Windows desktop · trusted identity ready" Style="{StaticResource MutedTextBlockStyle}" />
+                        <Button Content="Rename device" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource DeviceCardStyle}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="No active transfer" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                        <ProgressBar Value="0" />
+                        <TextBlock Text="Transfers will show route, speed, verification, and resume state here." Style="{StaticResource MutedTextBlockStyle}" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource DeviceCardStyle}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="No trusted devices yet" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                        <TextBlock Text="Pair with QR code before sending. Unknown devices are never trusted automatically." Style="{StaticResource MutedTextBlockStyle}" />
+                        <Button Content="Pair a device" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

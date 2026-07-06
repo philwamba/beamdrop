@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "beamdrop-protocol",
+    "beamdrop-crypto",
+    "beamdrop-transfer",
+    "beamdrop-discovery",
+    "beamdrop-store",
+    "beamdrop-bindings",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/beamdrop/beamdrop"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"

@@ -1,0 +1,29 @@
+<Window
+    x:Class="BeamDrop.Windows.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="BeamDrop">
+    <Grid>
+        <NavigationView
+            x:Name="ShellNavigation"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="True"
+            PaneDisplayMode="LeftCompact"
+            SelectionChanged="ShellNavigation_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Home" Icon="Home" Tag="Home" />
+                <NavigationViewItem Content="Nearby devices" Icon="Find" Tag="NearbyDevices" />
+                <NavigationViewItem Content="Pair device" Icon="Contact" Tag="PairDevice" />
+                <NavigationViewItem Content="Send text" Icon="Message" Tag="SendText" />
+                <NavigationViewItem Content="Send file" Icon="Document" Tag="SendFile" />
+                <NavigationViewItem Content="Transfers" Icon="Sync" Tag="TransferProgress" />
+                <NavigationViewItem Content="History" Icon="Clock" Tag="History" />
+                <NavigationViewItem Content="Trusted devices" Icon="People" Tag="TrustedDevices" />
+                <NavigationViewItem Content="Clipboard policy" Icon="Paste" Tag="ClipboardPolicy" />
+                <NavigationViewItem Content="Network diagnostics" Icon="Globe" Tag="NetworkDiagnostics" />
+                <NavigationViewItem Content="About" Icon="Help" Tag="About" />
+            </NavigationView.MenuItems>
+            <Frame x:Name="ShellFrame" />
+        </NavigationView>
+    </Grid>
+</Window>

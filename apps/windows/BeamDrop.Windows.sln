@@ -1,0 +1,31 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeamDrop.Windows.Core", "src\BeamDrop.Windows.Core\BeamDrop.Windows.Core.csproj", "{3B1D1D20-9E15-41F8-B6CB-97D3EAE731B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeamDrop.Windows.App", "src\BeamDrop.Windows.App\BeamDrop.Windows.App.csproj", "{06C8577A-2372-462B-82AA-AE83449234DB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeamDrop.Windows.Tests", "tests\BeamDrop.Windows.Tests\BeamDrop.Windows.Tests.csproj", "{2F4FF0F4-2937-43E8-BB6B-F364040EF55C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3B1D1D20-9E15-41F8-B6CB-97D3EAE731B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B1D1D20-9E15-41F8-B6CB-97D3EAE731B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B1D1D20-9E15-41F8-B6CB-97D3EAE731B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B1D1D20-9E15-41F8-B6CB-97D3EAE731B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06C8577A-2372-462B-82AA-AE83449234DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06C8577A-2372-462B-82AA-AE83449234DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06C8577A-2372-462B-82AA-AE83449234DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06C8577A-2372-462B-82AA-AE83449234DB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F4FF0F4-2937-43E8-BB6B-F364040EF55C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F4FF0F4-2937-43E8-BB6B-F364040EF55C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F4FF0F4-2937-43E8-BB6B-F364040EF55C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F4FF0F4-2937-43E8-BB6B-F364040EF55C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

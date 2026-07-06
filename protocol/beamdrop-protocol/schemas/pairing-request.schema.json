@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beamdrop.local/schemas/pairing-request.schema.json",
+  "title": "BeamDrop Pairing Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "requestId",
+    "pairingSessionId",
+    "createdAt",
+    "expiresAt",
+    "senderDeviceId",
+    "senderDeviceName",
+    "senderPlatform",
+    "senderPublicKey",
+    "receiverDeviceId",
+    "qrNonce"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "pairingSessionId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "senderDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "senderDeviceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "senderPlatform": {
+      "type": "string",
+      "enum": ["android", "ios", "macos", "windows"]
+    },
+    "senderPublicKey": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 256
+    },
+    "receiverDeviceId": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "qrNonce": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "endpointHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serviceName", "port"],
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "const": "_beamdrop._tcp"
+        },
+        "host": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    }
+  }
+}
