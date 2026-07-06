@@ -46,6 +46,7 @@ public enum TransferEnvelopeError: Error, Equatable, LocalizedError {
     case invalidSize
     case invalidChunkMetadata
     case missingHash
+    case invalidFileName
 
     public var errorDescription: String? {
         switch self {
@@ -54,6 +55,7 @@ public enum TransferEnvelopeError: Error, Equatable, LocalizedError {
         case .invalidSize: "Transfer size must not be negative."
         case .invalidChunkMetadata: "Transfer chunk metadata does not match payload size."
         case .missingHash: "Transfer is missing final SHA-256."
+        case .invalidFileName: "File name must not contain path separators or traversal segments."
         }
     }
 }
@@ -93,9 +95,31 @@ public enum TransferEnvelopeCodec {
         guard envelope.protocolVersion == BeamDropProtocol.version else { throw TransferEnvelopeError.unsupportedProtocol }
         guard envelope.payloadMetadata.sizeBytes >= 0 else { throw TransferEnvelopeError.invalidSize }
         guard envelope.payloadMetadata.chunkSize > 0 else { throw TransferEnvelopeError.invalidChunkSize }
-        guard !envelope.payloadMetadata.sha256.isEmpty else { throw TransferEnvelopeError.missingHash }
+        guard SafeSha256.isHexDigest(envelope.payloadMetadata.sha256) else { throw TransferEnvelopeError.missingHash }
+        guard SafeTransferFileName.isSafe(envelope.payloadMetadata.fileName) else { throw TransferEnvelopeError.invalidFileName }
         let expected = ChunkPlanner.totalChunks(sizeBytes: envelope.payloadMetadata.sizeBytes, chunkSize: envelope.payloadMetadata.chunkSize)
         guard envelope.payloadMetadata.totalChunks == expected else { throw TransferEnvelopeError.invalidChunkMetadata }
+    }
+}
+
+public enum SafeSha256 {
+    public static func isHexDigest(_ value: String) -> Bool {
+        guard value.count == 64 else { return false }
+        let allowed = CharacterSet(charactersIn: "0123456789abcdefABCDEF")
+        return value.unicodeScalars.allSatisfy { scalar in
+            allowed.contains(scalar)
+        }
+    }
+}
+
+public enum SafeTransferFileName {
+    public static func isSafe(_ fileName: String) -> Bool {
+        let trimmed = fileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != ".", trimmed != ".." else { return false }
+        if trimmed.contains("/") || trimmed.contains("\\") || trimmed.contains(":") { return false }
+        return trimmed.unicodeScalars.allSatisfy { scalar in
+            !CharacterSet.controlCharacters.contains(scalar)
+        }
     }
 }
 

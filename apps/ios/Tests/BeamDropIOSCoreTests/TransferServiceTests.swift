@@ -73,6 +73,27 @@ final class TransferServiceTests: XCTestCase {
         }
     }
 
+    func testPathTraversalFileNameRejected() throws {
+        let payload = Data("file payload".utf8)
+        let envelope = TransferEnvelope(
+            transferId: "tx-traversal",
+            transferType: .file,
+            senderDeviceId: "bd-ios-01",
+            senderPublicKey: "ios-public-key",
+            receiverDeviceId: "bd-android-01",
+            payloadMetadata: TransferPayloadMetadata(
+                fileName: "../secret.txt",
+                mimeType: "text/plain",
+                sizeBytes: Int64(payload.count),
+                sha256: Fingerprint.sha256Hex(data: payload)
+            )
+        )
+
+        XCTAssertThrowsError(try TransferEnvelopeCodec.validate(envelope)) { error in
+            XCTAssertEqual(error as? TransferEnvelopeError, .invalidFileName)
+        }
+    }
+
     func testUnknownAndRevokedPeersRejected() throws {
         let service = try transferService(peer: nil)
         XCTAssertThrowsError(try service.requireTrusted(deviceId: "unknown", publicKey: "key"))
