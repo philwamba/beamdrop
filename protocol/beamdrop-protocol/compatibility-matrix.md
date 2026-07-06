@@ -6,6 +6,22 @@
 | --- | --- | --- |
 | `1.0` | Initial | First BeamDrop schema contract for discovery, pairing, transfer envelopes, progress, results, and errors. |
 
+## Android-Windows MVP Compatibility
+
+| Area | Android | Windows | Required MVP behavior |
+| --- | --- | --- | --- |
+| Protocol version | `1.0` | `1.0` | Reject unsupported versions. |
+| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | New QR payloads use camelCase. |
+| Discovery service | `_beamdrop._tcp` | `_beamdrop._tcp` | No hardcoded IPs; use discovery, QR endpoint hints, or manual fallback. |
+| Transfer frame | JSON envelope + newline + bytes | JSON envelope + newline + bytes | Same envelope field names and chunk/hash metadata. |
+| Transfer type names | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | Reject unsupported transfer types. |
+| Chunk size | 4 MB | 4 MB | Never load large files fully into memory. |
+| Final hash | SHA-256 | SHA-256 | Verify before marking complete. |
+| Unknown peer | Rejected | Rejected | Pairing or explicit approval required. |
+| Revoked peer | Rejected | Rejected | Re-pairing required before trust is restored. |
+| Cancellation | `Cancelled` history | `Cancelled` history | User-visible cancellation state. |
+| Resume | Planned metadata | Planned metadata | Persisted cross-restart resume not complete yet. |
+
 ## Platform Compatibility
 
 | Platform | Supported in `1.0` | Notes |

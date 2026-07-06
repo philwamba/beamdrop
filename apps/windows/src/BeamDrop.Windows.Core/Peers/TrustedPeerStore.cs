@@ -1,5 +1,6 @@
 using BeamDrop.Windows.Core.Audit;
 using BeamDrop.Windows.Core.Pairing;
+using BeamDrop.Windows.Core.Security;
 
 namespace BeamDrop.Windows.Core.Peers;
 
@@ -57,12 +58,14 @@ public sealed class TrustedPeerRepository
             payload.DeviceId,
             payload.DeviceName,
             payload.Platform,
-            payload.PublicKeyBase64,
-            payload.Fingerprint,
+            payload.PublicKey,
+            string.IsNullOrWhiteSpace(payload.Fingerprint)
+                ? Fingerprint.FromPublicKey(System.Text.Encoding.UTF8.GetBytes(payload.PublicKey))
+                : payload.Fingerprint,
             TrustState.Trusted,
             autoAcceptTransfers,
-            payload.HostName,
-            payload.Port,
+            payload.Endpoint?.Host,
+            payload.Endpoint?.Port,
             DateTimeOffset.UtcNow,
             null,
             request.ReceivedAt);
@@ -81,6 +84,25 @@ public sealed class TrustedPeerRepository
 
     public TransferPeer RequireTrusted(string deviceId)
     {
+        var peer = RequireTrustedPeer(deviceId);
+        return new TransferPeer(peer.DeviceId, peer.DeviceName, peer.PublicKeyBase64, peer.AutoAcceptTransfers);
+    }
+
+    public TransferPeer RequireTrusted(string deviceId, string? publicKeyBase64)
+    {
+        var peer = RequireTrustedPeer(deviceId);
+        if (!string.IsNullOrWhiteSpace(publicKeyBase64) &&
+            !string.Equals(peer.PublicKeyBase64, publicKeyBase64, StringComparison.Ordinal))
+        {
+            _auditLog.Add(AuditEventType.UnknownPeerRejected, deviceId, null, "Peer public key did not match trusted record.");
+            throw new UnknownPeerRejectedException(deviceId);
+        }
+
+        return new TransferPeer(peer.DeviceId, peer.DeviceName, peer.PublicKeyBase64, peer.AutoAcceptTransfers);
+    }
+
+    private TrustedPeer RequireTrustedPeer(string deviceId)
+    {
         var peer = _store.Get(deviceId);
         if (peer is null || peer.TrustState == TrustState.Unknown)
         {
@@ -92,7 +114,7 @@ public sealed class TrustedPeerRepository
             _auditLog.Add(AuditEventType.RevokedPeerRejected, deviceId, null, "Revoked peer rejected.");
             throw new RevokedPeerRejectedException(deviceId);
         }
-        return new TransferPeer(peer.DeviceId, peer.DeviceName, peer.PublicKeyBase64, peer.AutoAcceptTransfers);
+        return peer;
     }
 }
 

@@ -41,6 +41,21 @@ public static class TransferEnvelopeCodec
         var chunkSize = payload.TryGetProperty("chunkSize", out var chunkSizeValue)
             ? chunkSizeValue.GetInt32()
             : BeamDropProtocol.DefaultChunkSizeBytes;
+        if (sizeBytes < 0)
+        {
+            throw new InvalidOperationException("Transfer size must not be negative.");
+        }
+        if (chunkSize <= 0)
+        {
+            throw new InvalidOperationException("Transfer chunk size is invalid.");
+        }
+        var totalChunks = payload.TryGetProperty("totalChunks", out var totalChunksValue)
+            ? totalChunksValue.GetInt64()
+            : ChunkCalculator.TotalChunks(sizeBytes, chunkSize);
+        if (totalChunks != ChunkCalculator.TotalChunks(sizeBytes, chunkSize))
+        {
+            throw new InvalidOperationException("Transfer chunk metadata does not match payload size.");
+        }
         return new TransferManifest(
             TransferId: root.GetProperty("transferId").GetString() ?? throw new InvalidOperationException("Missing transfer id."),
             Kind: FromWireTransferType(root.GetProperty("transferType").GetString() ?? ""),
@@ -50,9 +65,7 @@ public static class TransferEnvelopeCodec
             MimeType: payload.GetProperty("mimeType").GetString() ?? "application/octet-stream",
             SizeBytes: sizeBytes,
             ChunkSizeBytes: chunkSize,
-            TotalChunks: payload.TryGetProperty("totalChunks", out var totalChunksValue)
-                ? totalChunksValue.GetInt64()
-                : ChunkCalculator.TotalChunks(sizeBytes, chunkSize),
+            TotalChunks: totalChunks,
             Sha256: payload.TryGetProperty("sha256", out var shaValue) ? shaValue.GetString() : null,
             CreatedAt: DateTimeOffset.Parse(root.GetProperty("createdAt").GetString() ?? DateTimeOffset.UtcNow.ToString("O")),
             SenderPublicKey: root.TryGetProperty("senderPublicKey", out var publicKeyValue) ? publicKeyValue.GetString() : null);

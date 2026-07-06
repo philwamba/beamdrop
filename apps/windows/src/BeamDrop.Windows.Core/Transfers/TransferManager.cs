@@ -100,7 +100,7 @@ public sealed class TransferManager
 
     private async Task<TransferHistoryRecord> ReceivePayloadAsync(IncomingTransferRequest request, Stream payload, CancellationToken cancellationToken)
     {
-        var sender = _trustedPeers.RequireTrusted(request.Sender.DeviceId);
+        var sender = _trustedPeers.RequireTrusted(request.Sender.DeviceId, request.Manifest.SenderPublicKey);
         if (!sender.AutoAcceptTransfers && _approvalPrompt.Decide(request) == ReceiveDecision.Reject)
         {
             _auditLog.Add(AuditEventType.TransferRejected, sender.DeviceId, request.Manifest.TransferId, "Incoming transfer rejected.");
@@ -112,7 +112,11 @@ public sealed class TransferManager
         {
             await using (var output = target.OpenWrite())
             {
-                await CopyChunkedAsync(payload, output, request.Manifest.ChunkSizeBytes, cancellationToken);
+                var received = await CopyChunkedAsync(payload, output, request.Manifest.ChunkSizeBytes, cancellationToken);
+                if (received != request.Manifest.SizeBytes)
+                {
+                    throw new IncompleteTransferException(request.Manifest.TransferId, request.Manifest.SizeBytes, received);
+                }
             }
 
             if (request.Manifest.Sha256 is null)
@@ -142,6 +146,11 @@ public sealed class TransferManager
             target.Discard();
             return Persist(request.Manifest, sender, TransferDirection.Received, TransferStatus.Corrupted, ex.Message);
         }
+        catch (IncompleteTransferException ex)
+        {
+            target.Discard();
+            return Persist(request.Manifest, sender, TransferDirection.Received, TransferStatus.Incomplete, ex.Message);
+        }
         catch (Exception ex)
         {
             target.Discard();
@@ -149,16 +158,19 @@ public sealed class TransferManager
         }
     }
 
-    private static async Task CopyChunkedAsync(Stream input, Stream output, int chunkSizeBytes, CancellationToken cancellationToken)
+    private static async Task<long> CopyChunkedAsync(Stream input, Stream output, int chunkSizeBytes, CancellationToken cancellationToken)
     {
         var buffer = new byte[chunkSizeBytes];
+        var total = 0L;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
             if (read == 0) break;
             await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            total += read;
         }
+        return total;
     }
 
     private TransferHistoryRecord Persist(TransferManifest manifest, TransferPeer peer, TransferDirection direction, TransferStatus status, string? error)
@@ -173,4 +185,10 @@ public sealed class TransferManager
 public sealed class HashMismatchException : Exception
 {
     public HashMismatchException(string transferId) : base($"SHA-256 verification failed for {transferId}.") { }
+}
+
+public sealed class IncompleteTransferException : Exception
+{
+    public IncompleteTransferException(string transferId, long expectedBytes, long actualBytes)
+        : base($"Incomplete transfer {transferId}: expected {expectedBytes} bytes but received {actualBytes}.") { }
 }

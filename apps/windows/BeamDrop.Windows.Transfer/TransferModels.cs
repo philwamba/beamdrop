@@ -21,7 +21,9 @@ public enum TransferStatus
     Completed,
     Failed,
     Rejected,
-    Cancelled
+    Cancelled,
+    Corrupted,
+    Incomplete
 }
 
 public sealed record TransferPeer(

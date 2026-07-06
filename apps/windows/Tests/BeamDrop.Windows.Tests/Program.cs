@@ -18,6 +18,9 @@ internal sealed class WindowsTests
         TestDeviceIdentityGeneration();
         TestChunkedTransfer();
         TestHashVerification();
+        TestPairingQrCompatibility();
+        TestTransferEnvelopeCodec();
+        TestTransferEnvelopeDecodesAndroidEnvelope();
         await TestTransferManagerSendText();
         await TestReceiveFileHashVerification();
         TestTrustedPeerRejection();
@@ -55,6 +58,92 @@ internal sealed class WindowsTests
         AssertEqual(hash, Fingerprint.Sha256Hex(new MemoryStream(payload)), "sha256 stream matches bytes");
     }
 
+    private static void TestPairingQrCompatibility()
+    {
+        var service = new PairingService();
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeMilliseconds();
+        var request = service.ImportFromQrOrText(
+            $$"""
+            {
+              "type": "beamdrop_pairing",
+              "protocolVersion": "1.0",
+              "serviceName": "_beamdrop._tcp",
+              "pairingSessionId": "pair-android",
+              "deviceId": "bd-android-01",
+              "deviceName": "Pixel BeamDrop",
+              "platform": "android",
+              "publicKey": "android-public-key",
+              "endpoint": {
+                "host": "192.0.2.20",
+                "port": 49320,
+                "route": "local"
+              },
+              "expiresAtEpochMillis": {{expiresAt}}
+            }
+            """);
+
+        AssertEqual("bd-android-01", request.RemotePayload.DeviceId, "android qr device id");
+        AssertEqual("Pixel BeamDrop", request.RemotePayload.DeviceName, "android qr device name");
+        AssertEqual(BeamDropPlatform.Android, request.RemotePayload.Platform, "android qr platform");
+        AssertEqual("android-public-key", request.RemotePayload.PublicKey, "android qr public key");
+        AssertEqual(49320, request.RemotePayload.Endpoint!.Port, "android qr endpoint port");
+    }
+
+    private static void TestTransferEnvelopeCodec()
+    {
+        var manifest = new TransferManifest(
+            TransferId: "tx-codec",
+            Kind: TransferKind.File,
+            SenderDeviceId: "bd-windows-sender",
+            ReceiverDeviceId: "bd-android-receiver",
+            FileName: "demo.txt",
+            MimeType: "text/plain",
+            SizeBytes: 8,
+            ChunkSizeBytes: BeamDropProtocol.DefaultChunkSizeBytes,
+            TotalChunks: 1,
+            Sha256: new string('f', 64),
+            CreatedAt: DateTimeOffset.Parse("2026-07-06T14:27:18Z"),
+            SenderPublicKey: "windows-public-key");
+
+        var decoded = TransferEnvelopeCodec.Decode(TransferEnvelopeCodec.Encode(manifest));
+
+        AssertEqual("bd-windows-sender", decoded.SenderDeviceId, "wire sender device id");
+        AssertEqual("windows-public-key", decoded.SenderPublicKey, "wire sender public key");
+        AssertEqual("bd-android-receiver", decoded.ReceiverDeviceId, "wire receiver device id");
+        AssertEqual(TransferKind.File, decoded.Kind, "wire transfer type");
+        AssertEqual(BeamDropProtocol.DefaultChunkSizeBytes, decoded.ChunkSizeBytes, "wire chunk size");
+    }
+
+    private static void TestTransferEnvelopeDecodesAndroidEnvelope()
+    {
+        var decoded = TransferEnvelopeCodec.Decode(
+            """
+            {
+              "protocolVersion": "1.0",
+              "transferId": "tx-android",
+              "transferType": "TEXT",
+              "senderDeviceId": "bd-android-01",
+              "senderPublicKey": "android-public-key",
+              "receiverDeviceId": "bd-windows-01",
+              "createdAt": "2026-07-06T14:27:18Z",
+              "payloadMetadata": {
+                "fileName": "Text",
+                "mimeType": "text/plain",
+                "sizeBytes": 5,
+                "chunkSize": 4194304,
+                "totalChunks": 1,
+                "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+              }
+            }
+            """);
+
+        AssertEqual("tx-android", decoded.TransferId, "android envelope transfer id");
+        AssertEqual(TransferKind.Text, decoded.Kind, "android envelope transfer kind");
+        AssertEqual("bd-android-01", decoded.SenderDeviceId, "android envelope sender");
+        AssertEqual("android-public-key", decoded.SenderPublicKey, "android envelope public key");
+        AssertEqual(BeamDropProtocol.DefaultChunkSizeBytes, decoded.ChunkSizeBytes, "android envelope chunk size");
+    }
+
     private static async Task TestTransferManagerSendText()
     {
         var fixture = Fixture(trustState: TrustState.Trusted);
@@ -86,6 +175,9 @@ internal sealed class WindowsTests
 
         var revoked = Fixture(trustState: TrustState.Revoked);
         AssertThrows<RevokedPeerRejectedException>(() => revoked.Repository.RequireTrusted(PeerId), "revoked peer rejected");
+
+        var wrongKey = Fixture(trustState: TrustState.Trusted);
+        AssertThrows<UnknownPeerRejectedException>(() => wrongKey.Repository.RequireTrusted(PeerId, "wrong-public-key"), "mismatched trusted peer key rejected");
     }
 
     private static async Task TestClipboardPolicy()

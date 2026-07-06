@@ -17,6 +17,7 @@ testing, release, store, and privacy documentation for BeamDrop.
 - [Release Checklist](release-checklist.md)
 - [App Store Submission Notes](app-store-submission-notes.md)
 - [Privacy Policy Notes](privacy-policy-notes.md)
+- [Android-Windows Local MVP Checklist](android-windows-local-mvp-checklist.md)
 
 Use these docs for durable decisions and design notes that should outlive a
 single pull request.

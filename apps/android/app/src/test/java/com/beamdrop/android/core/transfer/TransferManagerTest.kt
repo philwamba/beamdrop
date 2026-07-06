@@ -45,6 +45,28 @@ class TransferManagerTest {
     }
 
     @Test
+    fun transferEnvelopeUsesSharedAndroidWindowsWireShape() {
+        val metadata = metadata(
+            type = AndroidTransferType.FILE,
+            fileName = "demo.txt",
+            sizeBytes = 8,
+            sha256 = "f".repeat(64),
+        ).copy(
+            senderDeviceId = "bd-android-sender",
+            senderPublicKey = "android-public-key",
+            receiverDeviceId = "bd-windows-receiver",
+        )
+
+        val decoded = TransferEnvelopeCodec.decode(TransferEnvelopeCodec.encode(metadata))
+
+        assertEquals("bd-android-sender", decoded.senderDeviceId)
+        assertEquals("android-public-key", decoded.senderPublicKey)
+        assertEquals("bd-windows-receiver", decoded.receiverDeviceId)
+        assertEquals(AndroidTransferType.FILE, decoded.type)
+        assertEquals(DEFAULT_CHUNK_SIZE_BYTES, decoded.chunkSizeBytes)
+    }
+
+    @Test
     fun progressCalculationReturnsPercent() {
         assertEquals(42, ProgressCalculator.percent(bytesTransferred = 42, totalBytes = 100))
         assertEquals(100, ProgressCalculator.percent(bytesTransferred = 125, totalBytes = 100))

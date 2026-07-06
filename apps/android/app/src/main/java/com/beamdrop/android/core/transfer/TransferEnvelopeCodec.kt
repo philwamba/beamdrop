@@ -31,6 +31,10 @@ object TransferEnvelopeCodec {
         val payload = json.getJSONObject("payloadMetadata")
         val sizeBytes = payload.getLong("sizeBytes")
         val chunkSize = payload.optLong("chunkSize", DEFAULT_CHUNK_SIZE_BYTES)
+        require(sizeBytes >= 0) { "Transfer size must not be negative." }
+        require(chunkSize in 1..Int.MAX_VALUE) { "Transfer chunk size is invalid." }
+        val totalChunks = payload.optLong("totalChunks", ChunkCalculator.totalChunks(sizeBytes, chunkSize))
+        require(totalChunks == ChunkCalculator.totalChunks(sizeBytes, chunkSize)) { "Transfer chunk metadata does not match payload size." }
         return TransferMetadata(
             transferId = json.getString("transferId"),
             type = AndroidTransferType.valueOf(json.getString("transferType")),
@@ -41,7 +45,7 @@ object TransferEnvelopeCodec {
             mimeType = payload.getString("mimeType"),
             sizeBytes = sizeBytes,
             chunkSizeBytes = chunkSize,
-            totalChunks = payload.optLong("totalChunks", ChunkCalculator.totalChunks(sizeBytes, chunkSize)),
+            totalChunks = totalChunks,
             sha256 = payload.optString("sha256").takeUnless(String::isBlank),
             createdAtEpochMillis = Instant.parse(json.getString("createdAt")).toEpochMilli(),
         )
