@@ -6,22 +6,33 @@
 | --- | --- | --- |
 | `1.0` | Initial | First BeamDrop schema contract for discovery, pairing, transfer envelopes, progress, results, and errors. |
 
-## Android-Windows MVP Compatibility
+## Android-Windows-macOS MVP Compatibility
 
-| Area | Android | Windows | Required MVP behavior |
-| --- | --- | --- | --- |
-| Protocol version | `1.0` | `1.0` | Reject unsupported versions. |
-| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | New QR payloads use `type`, `protocolVersion`, `serviceName`, `pairingSessionId`, `deviceId`, `deviceName`, `platform`, `publicKey`, optional `endpoint`, and `expiresAtEpochMillis`. |
-| Discovery service | `_beamdrop._tcp` | `_beamdrop._tcp` | No hardcoded IPs; use discovery, QR endpoint hints, or manual fallback. |
-| Transfer frame | JSON envelope + newline + bytes | JSON envelope + newline + bytes | Same envelope field names and chunk/hash metadata. |
-| Transfer type names | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | Reject unsupported transfer types. |
-| Chunk size | 4 MB | 4 MB | Never load large files fully into memory. |
-| Final hash | SHA-256 | SHA-256 | Verify before marking complete. |
-| Unknown peer | Rejected | Rejected | Pairing or explicit approval required. |
-| Revoked peer | Rejected | Rejected | Re-pairing required before trust is restored. |
-| Transfer status names | Android enum names | Windows enum names | `Queued`, `WaitingForApproval`, `Transferring`, `Verifying`, `Completed`, `Failed`, `Cancelled`, `Rejected`, `Corrupted`, `Incomplete`. |
-| Cancellation | `Cancelled` history | `Cancelled` history | User-visible cancellation state. |
-| Resume | Planned metadata | Planned metadata | Persisted cross-restart resume not complete yet. |
+| Area | Android | Windows | macOS | Required MVP behavior |
+| --- | --- | --- | --- | --- |
+| Protocol version | `1.0` | `1.0` | `1.0` | Reject unsupported versions. |
+| Pairing QR JSON | camelCase, accepts legacy snake_case | camelCase | camelCase | New QR payloads use `type`, `protocolVersion`, `serviceName`, `pairingSessionId`, `deviceId`, `deviceName`, `platform`, `publicKey`, optional `endpoint`, and `expiresAtEpochMillis`. |
+| Discovery service | `_beamdrop._tcp` | `_beamdrop._tcp` | `_beamdrop._tcp` | No hardcoded IPs; use discovery, QR endpoint hints, or manual fallback. |
+| Transfer frame | JSON envelope + newline + bytes | JSON envelope + newline + bytes | JSON envelope + newline + bytes | Same envelope field names and chunk/hash metadata. |
+| Transfer type names | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | `TEXT`, `URL`, `FILE`, `CLIPBOARD_TEXT` | Reject unsupported transfer types. |
+| Chunk size | 4 MB | 4 MB | 4 MB | Never load large files fully into memory. |
+| Final hash | SHA-256 | SHA-256 | SHA-256 | Verify before marking complete. |
+| Unknown peer | Rejected | Rejected | Rejected | Pairing or explicit approval required. |
+| Revoked peer | Rejected | Rejected | Rejected | Re-pairing required before trust is restored. |
+| Transfer status names | Android enum names | Windows enum names | Swift enum raw values | `Queued`, `WaitingForApproval`, `Transferring`, `Verifying`, `Completed`, `Failed`, `Cancelled`, `Rejected`, `Corrupted`, `Incomplete`. |
+| Cancellation | `Cancelled` history | `Cancelled` history | `Cancelled` history | User-visible cancellation state. |
+| Resume | Planned metadata | Planned metadata | Planned metadata | Persisted cross-restart resume not complete yet. |
+
+## macOS MVP Implementation Notes
+
+| Area | macOS behavior |
+| --- | --- |
+| Native stack | Swift, SwiftUI, AppKit, Network.framework, Bonjour, NSPasteboard, Keychain. |
+| Menu bar | Status item exposes open app, send clipboard, pairing, clipboard pause, diagnostics, and quit actions. |
+| Pairing import | Paste/import pairing JSON is implemented; camera QR scanning is future work. |
+| Receive path | Local TCP listener accepts `JSON envelope + newline + payload bytes`, checks trusted peer state, requires approval unless auto-accept is enabled, writes files to Downloads, and verifies SHA-256. |
+| Clipboard | Manual send only. Clipboard sharing can be paused, disabled, and sensitive-looking text is blocked from clipboard-send action. |
+| Security | Device identity is generated with CryptoKit and persisted through a Keychain abstraction. |
 
 ## Platform Compatibility
 
