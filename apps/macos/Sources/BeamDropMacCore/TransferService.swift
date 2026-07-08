@@ -249,8 +249,15 @@ public final class TransferService {
                     connection: connection,
                     receiveDirectory: receiveDirectory,
                     progress: progress
-                )
-                completion(.success(envelope))
+                ) { result in
+                    switch result {
+                    case .success:
+                        completion(.success(envelope))
+                    case .failure(let error):
+                        connection.cancel()
+                        completion(.failure(error))
+                    }
+                }
             } catch {
                 connection.cancel()
                 completion(.failure(error))
@@ -263,59 +270,188 @@ public final class TransferService {
         peer: TrustedPeer,
         connection: NWConnection,
         receiveDirectory: URL,
-        progress: TransferProgressHandler?
+        progress: TransferProgressHandler?,
+        completion: @escaping @Sendable (Result<Void, Error>) -> Void
     ) throws {
         try record(envelope: envelope, peer: peer, direction: .received, status: .transferring)
+        let session = try acceptSession(for: envelope, peer: peer)
+        if session == nil {
+            try? auditLog.record(type: "legacy_plaintext_receive", message: "Received unencrypted transfer \(envelope.transferId) from \(peer.deviceName).")
+        }
         let destination = envelope.transferType == .file
             ? safeDestinationURL(directory: receiveDirectory, fileName: envelope.payloadMetadata.fileName)
-            : receiveDirectory.appendingPathComponent(".beamdrop-\(envelope.transferId).tmp")
+            : safeDestinationURL(directory: receiveDirectory, fileName: ".beamdrop-\(envelope.transferId).tmp")
         FileManager.default.createFile(atPath: destination.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: destination)
-        let group = DispatchGroup()
-        var received: Int64 = 0
-        var receiveError: Error?
+        let sink = try PayloadSink(handle: FileHandle(forWritingTo: destination))
         let startedAt = Date()
-        group.enter()
-        receiveBytes(connection: connection, remaining: envelope.payloadMetadata.sizeBytes) { chunk, done, error in
-            if let error {
-                receiveError = error
-                group.leave()
-                return
+        let finish: @Sendable (Result<Int64, Error>) -> Void = { [weak self] result in
+            guard let self else { return }
+            self.finalizeReceive(envelope: envelope, peer: peer, destination: destination, sink: sink, result: result, completion: completion)
+        }
+        if let session {
+            let chunks = ChunkCalculator.chunks(sizeBytes: envelope.payloadMetadata.sizeBytes, chunkSize: envelope.payloadMetadata.chunkSize)
+            receiveSealedChunks(connection: connection, chunks: chunks[...], session: session, sink: sink, envelope: envelope, peer: peer, startedAt: startedAt, progress: progress, completion: finish)
+        } else {
+            receivePlainBytes(connection: connection, remaining: envelope.payloadMetadata.sizeBytes, sink: sink, envelope: envelope, peer: peer, startedAt: startedAt, progress: progress, completion: finish)
+        }
+    }
+
+    private func acceptSession(for envelope: TransferEnvelope, peer: TrustedPeer) throws -> SessionCrypto? {
+        guard let encryption = envelope.encryption else { return nil }
+        guard encryption.scheme == BeamDropProtocol.sessionEncryptionScheme else {
+            throw BeamDropError.invalidEncryptionMetadata("Unsupported scheme \(encryption.scheme).")
+        }
+        guard let sessionPrivateKey else {
+            throw BeamDropError.encryptionFailure("No session private key is available to decrypt this transfer.")
+        }
+        guard let ephemeralPublic = Data(hexEncoded: encryption.ephemeralPublicKey), ephemeralPublic.count == 32 else {
+            throw BeamDropError.invalidEncryptionMetadata("ephemeralPublicKey must be 64 hex characters.")
+        }
+        return try SessionCrypto.accept(
+            receiverStaticSecret: sessionPrivateKey,
+            senderStaticPublic: try X25519PublicKeyCodec.rawKey(spkiBase64: peer.publicKey),
+            ephemeralPublic: ephemeralPublic,
+            senderDeviceId: envelope.senderDeviceId,
+            receiverDeviceId: envelope.receiverDeviceId,
+            transferId: envelope.transferId
+        )
+    }
+
+    private func finalizeReceive(
+        envelope: TransferEnvelope,
+        peer: TrustedPeer,
+        destination: URL,
+        sink: PayloadSink,
+        result: Result<Int64, Error>,
+        completion: @escaping @Sendable (Result<Void, Error>) -> Void
+    ) {
+        try? sink.close()
+        do {
+            let received = try result.get()
+            guard received == envelope.payloadMetadata.sizeBytes else {
+                try record(envelope: envelope, peer: peer, direction: .received, status: .incomplete, error: "Expected \(envelope.payloadMetadata.sizeBytes) bytes, received \(received).")
+                throw BeamDropError.transferRejected("Transfer incomplete.")
             }
-            if let chunk, !chunk.isEmpty {
-                do {
-                    try handle.write(contentsOf: chunk)
-                    received += Int64(chunk.count)
-                    progress?(self.makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: received, startedAt: startedAt))
-                } catch {
-                    receiveError = error
+            if let expectedHash = envelope.payloadMetadata.sha256 {
+                guard try SHA256Hashing.verify(fileURL: destination, expectedHex: expectedHash) else {
+                    let actual = try SHA256Hashing.hash(fileURL: destination)
+                    try record(envelope: envelope, peer: peer, direction: .received, status: .corrupted, error: "SHA-256 mismatch.")
+                    throw BeamDropError.hashMismatch(expected: expectedHash, actual: actual)
                 }
             }
-            if done {
-                group.leave()
+            if envelope.transferType == .text || envelope.transferType == .clipboardText {
+                let text = try String(contentsOf: destination, encoding: .utf8)
+                try? FileManager.default.removeItem(at: destination)
+                try record(envelope: envelope, peer: peer, direction: .received, status: .completed)
+                try auditLog.record(type: "receive_text", message: "Received text from \(peer.deviceName): \(text.prefix(80))")
+            } else {
+                try record(envelope: envelope, peer: peer, direction: .received, status: .completed)
+            }
+            completion(.success(()))
+        } catch {
+            if case BeamDropError.encryptionFailure = error {
+                try? record(envelope: envelope, peer: peer, direction: .received, status: .failed, error: error.localizedDescription)
+            }
+            completion(.failure(error))
+        }
+    }
+
+    private func receiveSealedChunks(
+        connection: NWConnection,
+        chunks: ArraySlice<ChunkMetadata>,
+        session: SessionCrypto,
+        sink: PayloadSink,
+        envelope: TransferEnvelope,
+        peer: TrustedPeer,
+        startedAt: Date,
+        progress: TransferProgressHandler?,
+        completion: @escaping @Sendable (Result<Int64, Error>) -> Void
+    ) {
+        guard let chunk = chunks.first else {
+            completion(.success(sink.totalBytes))
+            return
+        }
+        readExactly(connection, count: Int(chunk.length) + SessionCrypto.sealedOverheadBytes, buffer: Data()) { [weak self] result in
+            guard let self else { return }
+            do {
+                let plaintext = try session.openChunk(result.get(), index: chunk.index)
+                let total = try sink.write(plaintext)
+                progress?(self.makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: total, startedAt: startedAt))
+                self.receiveSealedChunks(connection: connection, chunks: chunks.dropFirst(), session: session, sink: sink, envelope: envelope, peer: peer, startedAt: startedAt, progress: progress, completion: completion)
+            } catch {
+                completion(.failure(error))
             }
         }
-        group.wait()
-        try handle.close()
-        if let receiveError { throw receiveError }
-        guard received == envelope.payloadMetadata.sizeBytes else {
-            try record(envelope: envelope, peer: peer, direction: .received, status: .incomplete, error: "Expected \(envelope.payloadMetadata.sizeBytes) bytes, received \(received).")
-            throw BeamDropError.transferRejected("Transfer incomplete.")
+    }
+
+    private func receivePlainBytes(
+        connection: NWConnection,
+        remaining: Int64,
+        sink: PayloadSink,
+        envelope: TransferEnvelope,
+        peer: TrustedPeer,
+        startedAt: Date,
+        progress: TransferProgressHandler?,
+        completion: @escaping @Sendable (Result<Int64, Error>) -> Void
+    ) {
+        guard remaining > 0 else {
+            completion(.success(sink.totalBytes))
+            return
         }
-        if let expectedHash = envelope.payloadMetadata.sha256 {
-            guard try SHA256Hashing.verify(fileURL: destination, expectedHex: expectedHash) else {
-                let actual = try SHA256Hashing.hash(fileURL: destination)
-                try record(envelope: envelope, peer: peer, direction: .received, status: .corrupted, error: "SHA-256 mismatch.")
-                throw BeamDropError.hashMismatch(expected: expectedHash, actual: actual)
+        let maxLength = Int(min(BeamDropProtocol.defaultChunkSizeBytes, remaining))
+        connection.receive(minimumIncompleteLength: 1, maximumLength: maxLength) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard let data, !data.isEmpty else {
+                if isComplete {
+                    completion(.success(sink.totalBytes))
+                } else {
+                    completion(.failure(BeamDropError.transferRejected("Connection closed during payload.")))
+                }
+                return
+            }
+            do {
+                let total = try sink.write(data)
+                progress?(self.makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: total, startedAt: startedAt))
+                let nextRemaining = remaining - Int64(data.count)
+                if nextRemaining > 0 {
+                    self.receivePlainBytes(connection: connection, remaining: nextRemaining, sink: sink, envelope: envelope, peer: peer, startedAt: startedAt, progress: progress, completion: completion)
+                } else {
+                    completion(.success(total))
+                }
+            } catch {
+                completion(.failure(error))
             }
         }
-        if envelope.transferType == .text || envelope.transferType == .clipboardText {
-            let text = try String(contentsOf: destination, encoding: .utf8)
-            try? FileManager.default.removeItem(at: destination)
-            try record(envelope: envelope, peer: peer, direction: .received, status: .completed)
-            try auditLog.record(type: "receive_text", message: "Received text from \(peer.deviceName): \(text.prefix(80))")
-        } else {
-            try record(envelope: envelope, peer: peer, direction: .received, status: .completed)
+    }
+
+    private func readExactly(_ connection: NWConnection, count: Int, buffer: Data, completion: @escaping @Sendable (Result<Data, Error>) -> Void) {
+        guard buffer.count < count else {
+            completion(.success(buffer))
+            return
+        }
+        connection.receive(minimumIncompleteLength: 1, maximumLength: count - buffer.count) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard let data, !data.isEmpty else {
+                completion(.failure(BeamDropError.transferRejected("Connection closed during payload.")))
+                return
+            }
+            var next = buffer
+            next.append(data)
+            if next.count >= count {
+                completion(.success(next))
+            } else if isComplete {
+                completion(.failure(BeamDropError.transferRejected("Connection closed during payload.")))
+            } else {
+                self.readExactly(connection, count: count, buffer: next, completion: completion)
+            }
         }
     }
 
@@ -386,33 +522,6 @@ public final class TransferService {
         }
     }
 
-    private func receiveBytes(
-        connection: NWConnection,
-        remaining: Int64,
-        onChunk: @escaping @Sendable (Data?, Bool, Error?) -> Void
-    ) {
-        guard remaining > 0 else {
-            onChunk(nil, true, nil)
-            return
-        }
-        let maxLength = Int(min(BeamDropProtocol.defaultChunkSizeBytes, remaining))
-        connection.receive(minimumIncompleteLength: 1, maximumLength: maxLength) { data, _, isComplete, error in
-            if let error {
-                onChunk(nil, true, error)
-                return
-            }
-            guard let data, !data.isEmpty else {
-                onChunk(nil, isComplete, isComplete ? nil : BeamDropError.transferRejected("Connection closed during payload."))
-                return
-            }
-            let nextRemaining = remaining - Int64(data.count)
-            onChunk(data, nextRemaining == 0, nil)
-            if nextRemaining > 0 {
-                self.receiveBytes(connection: connection, remaining: nextRemaining, onChunk: onChunk)
-            }
-        }
-    }
-
     private func requireSendAllowed(_ peer: TrustedPeer) throws {
         _ = try PeerTrustPolicy.requireTrusted(deviceId: peer.deviceId, store: peerStore)
     }
@@ -458,9 +567,13 @@ public final class TransferService {
     }
 
     private func safeDestinationURL(directory: URL, fileName: String) -> URL {
-        let sanitized = fileName
+        let scalars = fileName
             .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: "\\", with: "-")
             .replacingOccurrences(of: ":", with: "-")
+            .unicodeScalars
+            .filter { !CharacterSet.controlCharacters.contains($0) }
+        let sanitized = String(String.UnicodeScalarView(scalars))
         var candidate = directory.appendingPathComponent(sanitized)
         let ext = candidate.pathExtension
         let base = candidate.deletingPathExtension().lastPathComponent
@@ -471,6 +584,32 @@ public final class TransferService {
             counter += 1
         }
         return candidate
+    }
+}
+
+private final class PayloadSink: @unchecked Sendable {
+    private let lock = NSLock()
+    private let handle: FileHandle
+    private var bytesWritten: Int64 = 0
+
+    init(handle: FileHandle) {
+        self.handle = handle
+    }
+
+    var totalBytes: Int64 {
+        lock.withLock { bytesWritten }
+    }
+
+    func write(_ data: Data) throws -> Int64 {
+        try lock.withLock {
+            try handle.write(contentsOf: data)
+            bytesWritten += Int64(data.count)
+            return bytesWritten
+        }
+    }
+
+    func close() throws {
+        try lock.withLock { try handle.close() }
     }
 }
 

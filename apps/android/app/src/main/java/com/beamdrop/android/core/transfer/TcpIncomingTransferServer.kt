@@ -30,7 +30,8 @@ class TcpIncomingTransferServer(
                     autoAcceptTransfers = trustedPeer?.let { peer -> peer.trustState == com.beamdrop.android.core.pairing.TrustState.Trusted } == true,
                 )
                 val request = IncomingTransferRequest(metadata, sender)
-                if (metadata.type == AndroidTransferType.TEXT || metadata.type == AndroidTransferType.URL || metadata.type == AndroidTransferType.CLIPBOARD_TEXT) {
+                val isTextPayload = metadata.type == AndroidTransferType.TEXT || metadata.type == AndroidTransferType.URL || metadata.type == AndroidTransferType.CLIPBOARD_TEXT
+                if (isTextPayload && metadata.encryption == null) {
                     val bytes = ByteArrayOutputStream()
                     input.copyTo(bytes)
                     transferManager.receiveText(request, bytes.toString(Charsets.UTF_8.name()))

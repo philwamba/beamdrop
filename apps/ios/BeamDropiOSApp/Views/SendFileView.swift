@@ -4,10 +4,13 @@ import UniformTypeIdentifiers
 
 struct SendFileView: View {
     @EnvironmentObject private var container: AppContainer
+    @EnvironmentObject private var transfers: TransferCoordinator
     @State private var importing = false
     @State private var selectedFiles: [URL] = []
     @State private var selectedPeer: TrustedPeer?
     @State private var errorMessage: String?
+    @State private var statusMessage: String?
+    @State private var isSending = false
 
     var body: some View {
         List {
@@ -40,12 +43,39 @@ struct SendFileView: View {
                 }
             }
             Section("Transfer Integrity") {
-                Text("Large files are sent in 4 MB chunks. BeamDrop verifies the final SHA-256 hash before marking a receive complete.")
+                Text("Large files are sent in 4 MB chunks sealed with the BeamDrop session protocol. BeamDrop verifies the final SHA-256 hash before marking a receive complete.")
                     .foregroundStyle(.secondary)
-                Button("Send Selected File") {
-                    errorMessage = "File transfer transport is not connected in the current iPhone MVP build."
+                Button(isSending ? "Sending…" : "Send Selected File") {
+                    guard let peer = selectedPeer else { return }
+                    errorMessage = nil
+                    statusMessage = nil
+                    isSending = true
+                    let files = selectedFiles
+                    Task {
+                        var sentCount = 0
+                        for url in files {
+                            let scoped = url.startAccessingSecurityScopedResource()
+                            let record = await transfers.sendFile(at: url, to: peer)
+                            if scoped { url.stopAccessingSecurityScopedResource() }
+                            guard record?.status == .completed else {
+                                errorMessage = record?.errorMessage ?? transfers.errorMessage ?? "Transfer failed."
+                                break
+                            }
+                            sentCount += 1
+                        }
+                        isSending = false
+                        if sentCount == files.count {
+                            statusMessage = "Sent \(sentCount) file\(sentCount == 1 ? "" : "s") to \(peer.deviceName)."
+                            selectedFiles = []
+                        }
+                    }
                 }
-                .disabled(selectedFiles.isEmpty || selectedPeer == nil)
+                .disabled(selectedFiles.isEmpty || selectedPeer == nil || isSending)
+            }
+            if let statusMessage {
+                Section {
+                    Text(statusMessage).foregroundStyle(.green)
+                }
             }
             if let errorMessage {
                 Section {

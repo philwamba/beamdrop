@@ -2,6 +2,34 @@
 
 All notable BeamDrop changes are tracked here.
 
+## 0.1.0-internal.2 - 2026-07-08
+
+### Added
+
+- Transfer-session encryption foundations for Android, macOS, and Windows,
+  including sealed chunk streams and encrypted transfer envelope metadata.
+- iPhone local transfer transport primitives for TCP connection framing and
+  bounded frame reads.
+- Public-safe QA/readiness documentation pass that removes implementation-
+  sensitive details from Markdown while keeping release gates visible.
+
+### Changed
+
+- Transfer envelope handling now carries encryption metadata where supported and
+  keeps final hash verification as the completion gate.
+- macOS keychain, validation, transfer, and protocol models were tightened for
+  release-readiness work.
+- Windows transfer handling now tracks encryption-related audit state and
+  encrypted payload metadata.
+- Relay blob upload handling was tightened for safer temporary encrypted blob
+  processing.
+- Release, QA, architecture, store-submission, and security docs were reworded
+  to avoid exposing sensitive implementation detail or business readiness notes.
+
+### Release Status
+
+- Private QA only. This is not a public beta or production release.
+
 ## 0.1.0-internal.1 - 2026-07-07
 
 ### Added

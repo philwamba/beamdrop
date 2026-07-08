@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -97,6 +98,7 @@ import com.beamdrop.android.core.storage.SharedPreferencesTrustedPeerStore
 import com.beamdrop.android.core.storage.TrustedPeerRepository
 import com.beamdrop.android.core.transfer.AndroidFileTransferSource
 import com.beamdrop.android.core.transfer.AndroidTransferType
+import com.beamdrop.android.core.crypto.SessionTransferEncryption
 import com.beamdrop.android.core.transfer.AppPrivateReceiveTargetFactory
 import com.beamdrop.android.core.transfer.DEFAULT_TRANSFER_PORT
 import com.beamdrop.android.core.transfer.IncomingTransferRequest
@@ -135,6 +137,8 @@ class MainActivity : ComponentActivity() {
             approvalPrompt = ManualReceiveApprovalPrompt,
             localDeviceId = localIdentity.deviceId,
             localPublicKey = localIdentity.publicKey,
+            encryptionPolicy = SessionTransferEncryption(identityRepository.getOrCreateSessionSecretKey()),
+            logger = { message -> Log.i("BeamDropTransfer", message) },
         )
         val clipboardSender = ManualClipboardSender(
             clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager,

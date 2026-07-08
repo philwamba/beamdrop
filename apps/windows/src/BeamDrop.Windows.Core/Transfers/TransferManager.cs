@@ -85,10 +85,21 @@ public sealed class TransferManager
             CreatedAt: DateTimeOffset.UtcNow,
             SenderPublicKey: _localPublicKey);
 
+        var outgoing = payload;
+        if (_sessionEncryption?.TryCreateSenderSession(manifest, peer.PublicKeyBase64) is { } senderSession)
+        {
+            manifest = manifest with { Encryption = senderSession.Encryption };
+            outgoing = new ChunkSealingStream(payload, senderSession.Session, sizeBytes, manifest.ChunkSizeBytes);
+        }
+        else if (_sessionEncryption is not null)
+        {
+            _auditLog.Add(AuditEventType.LegacyPlaintextTransfer, peer.DeviceId, manifest.TransferId, "Peer key does not support session encryption; sending legacy plaintext.");
+        }
+
         _auditLog.Add(AuditEventType.TransferQueued, peer.DeviceId, manifest.TransferId, $"Queued {fileName}.");
         try
         {
-            await transport.SendAsync(manifest, payload, progress ?? new Progress<TransferProgress>(), cancellationToken);
+            await transport.SendAsync(manifest, outgoing, progress ?? new Progress<TransferProgress>(), cancellationToken);
             return Persist(manifest, peer, TransferDirection.Sent, TransferStatus.Completed, null);
         }
         catch (OperationCanceledException)
@@ -110,12 +121,34 @@ public sealed class TransferManager
             return Persist(request.Manifest, sender, TransferDirection.Received, TransferStatus.Rejected, "Receiver rejected transfer.");
         }
 
+        var incoming = payload;
+        if (request.Manifest.Encryption is not null)
+        {
+            try
+            {
+                if (_sessionEncryption is null)
+                {
+                    throw new SessionCryptoException("Received an encrypted transfer but session encryption is not configured on this device.");
+                }
+                var session = _sessionEncryption.CreateReceiverSession(request.Manifest, sender.PublicKeyBase64);
+                incoming = new ChunkOpeningStream(payload, session, request.Manifest.SizeBytes, request.Manifest.ChunkSizeBytes);
+            }
+            catch (Exception ex)
+            {
+                return Persist(request.Manifest, sender, TransferDirection.Received, TransferStatus.Failed, ex.Message);
+            }
+        }
+        else
+        {
+            _auditLog.Add(AuditEventType.LegacyPlaintextTransfer, sender.DeviceId, request.Manifest.TransferId, "Legacy plaintext transfer received (no session encryption block).");
+        }
+
         var target = _receiveTargetFactory.Create(request.Manifest);
         try
         {
             await using (var output = target.OpenWrite())
             {
-                var received = await CopyChunkedAsync(payload, output, request.Manifest.ChunkSizeBytes, cancellationToken);
+                var received = await CopyChunkedAsync(incoming, output, request.Manifest.ChunkSizeBytes, cancellationToken);
                 if (received != request.Manifest.SizeBytes)
                 {
                     throw new IncompleteTransferException(request.Manifest.TransferId, request.Manifest.SizeBytes, received);

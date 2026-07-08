@@ -42,6 +42,7 @@ final class BeamDropMacCoreTests: XCTestCase {
     }
 
     func testTransferEnvelopeCodecMatchesMVPWireContract() throws {
+        let ephemeralPublicKeyHex = "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b"
         let envelope = TransferEnvelope(
             transferId: "transfer-123",
             transferType: .file,
@@ -49,6 +50,7 @@ final class BeamDropMacCoreTests: XCTestCase {
             senderPublicKey: "public-key",
             receiverDeviceId: "windows-01",
             createdAt: "2026-07-06T12:00:00.000Z",
+            encryption: TransferEncryption(ephemeralPublicKey: ephemeralPublicKeyHex),
             payloadMetadata: PayloadMetadata(
                 fileName: "Quarterly Report.pdf",
                 mimeType: "application/pdf",
@@ -63,10 +65,99 @@ final class BeamDropMacCoreTests: XCTestCase {
         XCTAssertTrue(json.contains("\"payloadMetadata\""))
         XCTAssertTrue(json.contains("\"chunkSize\":4194304"))
         XCTAssertTrue(json.contains("\"totalChunks\":3"))
+        XCTAssertTrue(json.contains("\"encryption\":{\"ephemeralPublicKey\":\"\(ephemeralPublicKeyHex)\",\"scheme\":\"BEAMDROP_SESSION_V1\"}"))
 
         let decoded = try TransferEnvelopeCodec.decode(json)
         XCTAssertEqual(decoded.transferType, .file)
         XCTAssertEqual(decoded.payloadMetadata.totalChunks, 3)
+        XCTAssertEqual(decoded.encryption, TransferEncryption(scheme: "BEAMDROP_SESSION_V1", ephemeralPublicKey: ephemeralPublicKeyHex))
+    }
+
+    func testTransferEnvelopeWithoutEncryptionRemainsLegacyCompatible() throws {
+        let envelope = TransferEnvelope(
+            transferId: "transfer-legacy",
+            transferType: .text,
+            senderDeviceId: "macos-01",
+            senderPublicKey: "public-key",
+            receiverDeviceId: "android-01",
+            payloadMetadata: PayloadMetadata(
+                fileName: "BeamDrop Text",
+                mimeType: "text/plain; charset=utf-8",
+                sizeBytes: 5,
+                sha256: nil
+            )
+        )
+        let json = try TransferEnvelopeCodec.encode(envelope)
+        XCTAssertFalse(json.contains("\"encryption\""))
+        XCTAssertNil(try TransferEnvelopeCodec.decode(json).encryption)
+    }
+
+    func testInvalidEncryptionMetadataRejected() {
+        var envelope = TransferEnvelope(
+            transferId: "transfer-bad-crypto",
+            transferType: .file,
+            senderDeviceId: "macos-01",
+            senderPublicKey: "public-key",
+            receiverDeviceId: "windows-01",
+            encryption: TransferEncryption(scheme: "BEAMDROP_SESSION_V2", ephemeralPublicKey: String(repeating: "ab", count: 32)),
+            payloadMetadata: PayloadMetadata(
+                fileName: "report.pdf",
+                mimeType: "application/pdf",
+                sizeBytes: 10,
+                sha256: String(repeating: "0", count: 64)
+            )
+        )
+        XCTAssertThrowsError(try TransferEnvelopeValidator.validate(envelope)) { error in
+            XCTAssertEqual(error as? BeamDropError, .invalidEncryptionMetadata("Unsupported scheme BEAMDROP_SESSION_V2."))
+        }
+
+        envelope.encryption = TransferEncryption(ephemeralPublicKey: "not-hex")
+        XCTAssertThrowsError(try TransferEnvelopeValidator.validate(envelope)) { error in
+            XCTAssertEqual(error as? BeamDropError, .invalidEncryptionMetadata("ephemeralPublicKey must be 64 hex characters."))
+        }
+    }
+
+    func testReceivedFileNameValidationRejectsPathTraversal() {
+        let rejected = [
+            "../secret.txt",
+            "..",
+            ".",
+            "/etc/passwd",
+            "..\\windows\\system32",
+            "notes\\evil.txt",
+            "backup:2026",
+            "file\u{0000}name",
+            "file\u{001F}.txt",
+            "\u{0007}bell.txt",
+            "   "
+        ]
+        for name in rejected {
+            XCTAssertFalse(FileNameValidator.isSafe(name), "expected \(name.debugDescription) to be rejected")
+        }
+        XCTAssertTrue(FileNameValidator.isSafe("Quarterly Report.pdf"))
+        XCTAssertTrue(FileNameValidator.isSafe("..hidden-but-safe"))
+    }
+
+    func testEnvelopeWithTraversalFileNameRejectedOnDecode() throws {
+        for fileName in ["../secret.txt", "..", "/etc/passwd", "C:\\Users\\victim", "nul\u{0001}.bin"] {
+            let envelope = TransferEnvelope(
+                transferId: "transfer-traversal",
+                transferType: .file,
+                senderDeviceId: "macos-01",
+                senderPublicKey: "public-key",
+                receiverDeviceId: "windows-01",
+                payloadMetadata: PayloadMetadata(
+                    fileName: fileName,
+                    mimeType: "application/octet-stream",
+                    sizeBytes: 10,
+                    sha256: String(repeating: "0", count: 64)
+                )
+            )
+            let json = String(decoding: try BeamDropJSON.encoder.encode(envelope), as: UTF8.self)
+            XCTAssertThrowsError(try TransferEnvelopeCodec.decode(json), fileName.debugDescription) { error in
+                XCTAssertEqual(error as? BeamDropError, .invalidFileName)
+            }
+        }
     }
 
     func testInvalidChunkMetadataRejected() {

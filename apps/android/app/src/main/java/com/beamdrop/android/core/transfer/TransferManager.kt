@@ -165,8 +165,9 @@ class TransferManager(
 
         val target = receiveTargetFactory.create(metadata)
         return runCatching {
+            val payloadInput = openPayloadInput(metadata, sender, input)
             target.openOutputStream().use { output ->
-                val received = copyChunked(metadata.transferId, input, output, metadata.chunkSizeBytes)
+                val received = copyChunked(metadata.transferId, payloadInput, output, metadata.chunkSizeBytes)
                 if (received != metadata.sizeBytes) throw TransferError.IncompleteTransfer(metadata.transferId)
             }
             val expectedHash = metadata.sha256 ?: throw TransferError.HashMismatch(metadata.transferId)
@@ -184,6 +185,23 @@ class TransferManager(
             }
             persistFailure(metadata, sender, TransferDirection.Received, error, status)
         }
+    }
+
+    private fun openPayloadInput(
+        metadata: TransferMetadata,
+        sender: TransferPeer,
+        input: InputStream,
+    ): InputStream {
+        val encryption = metadata.encryption
+        if (encryption == null) {
+            logger("Legacy plaintext transfer ${metadata.transferId} from ${sender.deviceId}: no encryption block in envelope.")
+            return input
+        }
+        val policy = encryptionPolicy
+            ?: throw TransferError.TransportFailed("Encrypted transfer ${metadata.transferId} received but session encryption is not configured.")
+        // The trust gate above guarantees sender.publicKey equals the trusted peer's stored key.
+        val cipher = policy.incomingSession(metadata, sender.publicKey)
+        return SealedChunkInputStream(input, cipher, metadata.chunkSizeBytes.toInt())
     }
 
     private fun copyChunked(

@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
     implementation("com.google.zxing:core:3.5.3")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.81")
     implementation("org.json:json:20250517")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

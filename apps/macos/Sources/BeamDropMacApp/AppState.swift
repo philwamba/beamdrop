@@ -36,13 +36,15 @@ final class AppState: ObservableObject {
 
     init() {
         do {
-            let identity = try DeviceIdentityService().getOrCreateIdentity()
+            let identityService = DeviceIdentityService()
+            let identity = try identityService.getOrCreateIdentity()
             self.identity = identity
             self.peerStore = TrustedPeerStore()
             self.historyStore = TransferHistoryStore()
             self.auditLog = AuditLog()
             self.transferService = TransferService(
                 identity: identity,
+                sessionPrivateKey: try identityService.getOrCreateSessionPrivateKey(),
                 peerStore: peerStore,
                 historyStore: historyStore,
                 auditLog: auditLog

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct NearbyDevicesView: View {
     @State private var devices: [NearbyDevice] = []
+    @State private var discovery = BonjourDiscoveryService()
 
     var body: some View {
         List {
@@ -26,5 +27,15 @@ struct NearbyDevicesView: View {
             }
         }
         .navigationTitle("Nearby Devices")
+        .onAppear {
+            discovery.start { updated in
+                Task { @MainActor in
+                    devices = updated
+                }
+            }
+        }
+        .onDisappear {
+            discovery.stop()
+        }
     }
 }

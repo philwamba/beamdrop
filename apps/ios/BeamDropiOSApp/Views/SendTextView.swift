@@ -6,7 +6,10 @@ struct SendTextView: View {
     @State private var text = ""
     @State private var selectedPeer: TrustedPeer?
     @State private var errorMessage: String?
+    @State private var statusMessage: String?
+    @State private var isSending = false
     @EnvironmentObject private var container: AppContainer
+    @EnvironmentObject private var transfers: TransferCoordinator
 
     var body: some View {
         Form {
@@ -32,10 +35,27 @@ struct SendTextView: View {
                 }
             }
 
-            Button("Send Text") {
-                errorMessage = "Text transfer transport is not connected in the current iPhone MVP build."
+            Button(isSending ? "Sending…" : "Send Text") {
+                guard let peer = selectedPeer else { return }
+                errorMessage = nil
+                statusMessage = nil
+                isSending = true
+                Task {
+                    let record = await transfers.sendText(text, to: peer)
+                    isSending = false
+                    if record?.status == .completed {
+                        statusMessage = "Sent to \(peer.deviceName). Session-encrypted, SHA-256 verified on arrival."
+                    } else {
+                        errorMessage = record?.errorMessage ?? transfers.errorMessage ?? "Transfer failed."
+                    }
+                }
             }
-                .disabled(text.isEmpty || selectedPeer == nil)
+                .disabled(text.isEmpty || selectedPeer == nil || isSending)
+            if let statusMessage {
+                Section {
+                    Text(statusMessage).foregroundStyle(.green)
+                }
+            }
             if let errorMessage {
                 Section {
                     Text(errorMessage).foregroundStyle(.red)

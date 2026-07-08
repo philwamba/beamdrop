@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -69,6 +70,49 @@ public sealed class AesLocalSecretProtector : ISecretProtector
         using var decryptor = aes.CreateDecryptor();
         return decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
     }
+}
+
+/// <summary>
+/// Production secure storage protector for Windows: DPAPI (CurrentUser scope) with
+/// application-specific entropy. Protected blobs can only be recovered by the same
+/// Windows user on the same machine.
+/// </summary>
+[SupportedOSPlatform("windows")]
+public sealed class DpapiSecretProtector : ISecretProtector
+{
+    private static readonly byte[] DefaultEntropy = SHA256.HashData(Encoding.UTF8.GetBytes("beamdrop.windows.secret-protector.v1"));
+
+    private readonly byte[] _entropy;
+
+    public DpapiSecretProtector(byte[]? entropy = null)
+    {
+        _entropy = entropy is { Length: > 0 } ? entropy : DefaultEntropy;
+    }
+
+    public byte[] Protect(byte[] plaintext) =>
+        ProtectedData.Protect(plaintext, _entropy, DataProtectionScope.CurrentUser);
+
+    public byte[] Unprotect(byte[] protectedBytes) =>
+        ProtectedData.Unprotect(protectedBytes, _entropy, DataProtectionScope.CurrentUser);
+}
+
+/// <summary>
+/// Chooses the production secret protector for the current platform: DPAPI on Windows,
+/// the local AES protector everywhere else (tests, macOS/Linux development hosts).
+/// </summary>
+public static class SecretProtectorFactory
+{
+    public static ISecretProtector CreateProductionProtector(byte[]? nonWindowsFallbackKey = null)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new DpapiSecretProtector();
+        }
+        return new AesLocalSecretProtector(nonWindowsFallbackKey ?? DeriveLocalFallbackKey());
+    }
+
+    private static byte[] DeriveLocalFallbackKey() =>
+        SHA256.HashData(Encoding.UTF8.GetBytes($"beamdrop.local-fallback.{Environment.UserName}.{Environment.MachineName}"));
 }
 
 public sealed class WindowsSecureStoragePlan

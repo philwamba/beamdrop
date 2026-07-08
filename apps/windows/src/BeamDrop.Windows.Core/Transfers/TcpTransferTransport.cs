@@ -64,7 +64,7 @@ public sealed class TcpIncomingTransferServer
             var manifest = await ReadManifestAsync(stream, cancellationToken);
             var sender = _senderResolver(manifest);
             var request = new IncomingTransferRequest(manifest, sender);
-            if (manifest.Kind is TransferKind.Text or TransferKind.Url or TransferKind.ClipboardText)
+            if (manifest.Encryption is null && manifest.Kind is TransferKind.Text or TransferKind.Url or TransferKind.ClipboardText)
             {
                 using var memory = new MemoryStream();
                 await stream.CopyToAsync(memory, cancellationToken);
@@ -73,6 +73,8 @@ public sealed class TcpIncomingTransferServer
             }
             else
             {
+                // Encrypted payloads (any kind) are sealed bytes; hand the raw stream to the
+                // transfer manager, which opens the chunks before verification.
                 await _transferManager.ReceiveFileAsync(request, stream, cancellationToken);
             }
         }

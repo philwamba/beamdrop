@@ -12,6 +12,8 @@ namespace BeamDrop.Windows.App.ViewModels;
 
 public sealed class WindowsMvpRuntime
 {
+    private const string SessionSecretName = "beamdrop.windows.session.x25519-secret.v1";
+
     public DeviceIdentity Identity { get; }
     public TrustedPeerRepository TrustedPeers { get; }
     public TransferManager Transfers { get; }
@@ -26,10 +28,17 @@ public sealed class WindowsMvpRuntime
         var audit = new BeamDrop.Windows.Core.Audit.AuditLog();
         var key = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Environment.UserName + Environment.MachineName));
         var identityStore = new InMemoryDeviceIdentityStore();
-        var secretStore = new ProtectedSecretStore(new AesLocalSecretProtector(key));
+        // Production provider: DPAPI (CurrentUser + entropy) on Windows, AES local protector elsewhere.
+        var secretStore = new ProtectedSecretStore(SecretProtectorFactory.CreateProductionProtector(key));
         Identity = new DeviceIdentityService(identityStore, secretStore).GetOrCreate(deviceName);
         TrustedPeers = new TrustedPeerRepository(new InMemoryTrustedPeerStore(), audit);
         History = new InMemoryTransferHistoryStore();
+        var sessionSecret = secretStore.Load(SessionSecretName);
+        if (sessionSecret is null)
+        {
+            sessionSecret = SessionCrypto.GenerateSecretKey();
+            secretStore.Save(SessionSecretName, sessionSecret);
+        }
         Transfers = new TransferManager(
             TrustedPeers,
             History,
@@ -37,7 +46,8 @@ public sealed class WindowsMvpRuntime
             new RejectingReceiveApprovalPrompt(),
             audit,
             localDeviceId: Identity.DeviceId,
-            localPublicKey: Identity.PublicKeyBase64);
+            localPublicKey: Identity.PublicKeyBase64,
+            sessionEncryption: new SessionEncryptionService(sessionSecret));
         Clipboard = new ClipboardSharingService(clipboardReader, Transfers, audit);
         Discovery = discovery ?? new InMemoryDiscoveryService();
     }
