@@ -3,8 +3,8 @@ package com.beamdrop.android.ui.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.QrCode
-import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -24,7 +24,7 @@ internal fun BeamDropBottomBar(
         NavigationBarItem(
             selected = current == BeamDropDestination.Home,
             onClick = onHome,
-            icon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
+            icon = { Icon(Icons.Outlined.Home, contentDescription = null) },
             label = { Text("Home") },
         )
         NavigationBarItem(
@@ -42,7 +42,7 @@ internal fun BeamDropBottomBar(
         NavigationBarItem(
             selected = current == BeamDropDestination.Settings,
             onClick = onSettings,
-            icon = { Icon(Icons.Outlined.Security, contentDescription = null) },
+            icon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
             label = { Text("Settings") },
         )
     }

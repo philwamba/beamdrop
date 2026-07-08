@@ -20,6 +20,8 @@ import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.QrCode
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -54,7 +56,6 @@ import com.beamdrop.android.core.pairing.TrustedPeer
 import com.beamdrop.android.core.transfer.TransferHistoryRecord
 import com.beamdrop.android.navigation.BeamDropDestination
 import com.beamdrop.android.ui.components.BeamDropBottomBar
-import com.beamdrop.android.ui.components.EmptyDevices
 import com.beamdrop.android.ui.components.HistoryRow
 import com.beamdrop.android.ui.components.PeerRow
 import com.beamdrop.android.ui.components.SectionSurface
@@ -83,7 +84,8 @@ internal fun HomeScreen(
     val context = LocalContext.current
     var renameDialogOpen by remember { mutableStateOf(false) }
     var draftName by remember(identity.displayName) { mutableStateOf(identity.displayName) }
-    val trustedCount = peers.count { it.trustState == TrustState.Trusted }
+    val trustedPeers = remember(peers) { peers.filter { it.trustState == TrustState.Trusted } }
+    val trustedCount = trustedPeers.size
     val identityCode = remember(identity.publicKey) {
         Fingerprint.fromPublicKey(identity.publicKey)
             .split(":")
@@ -267,18 +269,30 @@ internal fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Outlined.Devices, contentDescription = null)
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Receive and pair", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Show your QR or scan another device.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Receive", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Show your QR code or scan another BeamDrop device.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    if (peers.none { it.trustState == TrustState.Trusted }) {
-                        EmptyDevices(onPair, onScan)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = onPair, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Outlined.QrCode, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("Show QR")
+                        }
+                        OutlinedButton(onClick = onScan, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("Scan QR")
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    if (trustedPeers.isEmpty()) {
+                        Text("No trusted devices yet. Pair once before sending or receiving content.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        peers.filter { it.trustState == TrustState.Trusted }.take(3).forEach { PeerRow(it) }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        trustedPeers.take(3).forEach { PeerRow(it) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             TextButton(onClick = onDevices) { Text("Manage devices") }
-                            TextButton(onClick = onScan) { Text("Scan QR") }
                         }
                     }
                 }
