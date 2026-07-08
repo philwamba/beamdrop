@@ -2,6 +2,23 @@
 
 All notable BeamDrop changes are tracked here.
 
+## 0.1.0-internal.5 - 2026-07-08
+
+### Changed
+
+- Android app structure now follows a professional single-Activity Compose
+  architecture with navigation, screens, theme, shared components, and helpers
+  split by feature area.
+- Android Home now uses a simpler phone-screen-inspired layout with centered
+  BeamDrop identity, a short device code, lightweight top actions, and a
+  minimal Receive / Send / Settings bottom dock.
+- Android colors now align more closely with the teal BeamDrop logo direction.
+
+### Release Status
+
+- Private QA only. Android artifacts use internal signing for sideload
+  installability, not production Play/App Signing credentials.
+
 ## 0.1.0-internal.4 - 2026-07-08
 
 ### Fixed
