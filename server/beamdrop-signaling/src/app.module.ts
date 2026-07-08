@@ -1,9 +1,11 @@
 import { Module } from "@nestjs/common";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { HealthController } from "./health/health.controller";
 import { PresenceService } from "./presence/presence.service";
 import { SignalingGateway } from "./signaling/signaling.gateway";
 import { SessionAuthService } from "./common/session-auth.service";
+import { SessionController } from "./sessions/session.controller";
 
 @Module({
   imports: [
@@ -14,7 +16,15 @@ import { SessionAuthService } from "./common/session-auth.service";
       }
     ])
   ],
-  controllers: [HealthController],
-  providers: [PresenceService, SignalingGateway, SessionAuthService]
+  controllers: [HealthController, SessionController],
+  providers: [
+    PresenceService,
+    SignalingGateway,
+    SessionAuthService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
+  ]
 })
 export class AppModule {}

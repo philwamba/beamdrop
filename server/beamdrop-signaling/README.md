@@ -8,7 +8,8 @@ The local MVP must work without this service.
 - Health endpoint: `GET /health`.
 - WebSocket gateway namespace: `/signaling`.
 - Device presence tracking.
-- Auth/session placeholder using `x-beamdrop-device-id`.
+- Development-only auth/session placeholder. Do not use the scaffold as a
+  production authentication model.
 - Pairing signaling placeholder event: `pairing:signal`.
 - Transfer signaling placeholder event: `transfer:signal`.
 - Rate limiting structure through `@nestjs/throttler`.

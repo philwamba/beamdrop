@@ -1,5 +1,6 @@
 import { InMemoryBlobStorage } from "../src/blobs/blob-storage";
 import { CleanupService } from "../src/cleanup/cleanup.service";
+import { RelayConfig } from "../src/common/relay.config";
 import { RelayRecordRepository } from "../src/tokens/relay-record.repository";
 
 describe("CleanupService", () => {
@@ -18,7 +19,9 @@ describe("CleanupService", () => {
     });
     await storage.put("relay-1.bin", Buffer.from("abcd"), "application/octet-stream");
 
-    const deleted = await new CleanupService(records, storage).cleanupExpired(new Date("2026-07-06T12:00:01Z"));
+    const deleted = await new CleanupService(records, storage, new RelayConfig()).cleanupExpired(
+      new Date("2026-07-06T12:00:01Z")
+    );
 
     expect(deleted).toBe(1);
     expect(records.findByToken("expired")).toBeUndefined();

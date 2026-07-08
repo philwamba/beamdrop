@@ -4,7 +4,7 @@ import Foundation
 public final class DeviceIdentityService {
     private let keychain: KeychainStoring
     private let deviceIdKey = "beamdrop.deviceId"
-    private let privateKeyKey = "beamdrop.privateKey.p256.v1"
+    private let sessionPrivateKeyKey = "beamdrop.privateKey.x25519.v1"
 
     public init(keychain: KeychainStoring) {
         self.keychain = keychain
@@ -19,19 +19,27 @@ public final class DeviceIdentityService {
             try keychain.save(key: deviceIdKey, data: Data(deviceId.utf8))
         }
 
-        let privateKey: P256.Signing.PrivateKey
-        if let raw = try keychain.load(key: privateKeyKey) {
-            privateKey = try P256.Signing.PrivateKey(rawRepresentation: raw)
-        } else {
-            privateKey = P256.Signing.PrivateKey()
-            try keychain.save(key: privateKeyKey, data: privateKey.rawRepresentation)
-        }
+        let privateKey = try loadOrCreateSessionPrivateKey()
 
         return DeviceIdentity(
             deviceId: deviceId,
             deviceName: deviceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "iPhone" : deviceName,
             platform: .ios,
-            publicKey: privateKey.publicKey.rawRepresentation.base64EncodedString()
+            publicKey: try X25519KeyCodec.base64SPKI(fromRawKey: privateKey.publicKey.rawRepresentation)
         )
+    }
+
+    /// Raw 32-byte X25519 static secret used to derive per-transfer session keys.
+    public func sessionSecretKey() throws -> Data {
+        try loadOrCreateSessionPrivateKey().rawRepresentation
+    }
+
+    private func loadOrCreateSessionPrivateKey() throws -> Curve25519.KeyAgreement.PrivateKey {
+        if let raw = try keychain.load(key: sessionPrivateKeyKey) {
+            return try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: raw)
+        }
+        let privateKey = Curve25519.KeyAgreement.PrivateKey()
+        try keychain.save(key: sessionPrivateKeyKey, data: privateKey.rawRepresentation)
+        return privateKey
     }
 }

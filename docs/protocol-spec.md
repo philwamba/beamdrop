@@ -153,7 +153,11 @@ After discovery, manual IP entry, or QR connection:
 4. Devices confirm trust state.
 5. Receiver enforces approval requirements.
 
-All transfer sessions must use authenticated encryption.
+Production transfers must use an authenticated encrypted session that is
+reviewed and tested consistently across platforms. Public protocol
+documentation intentionally avoids publishing implementation-sensitive
+derivation details; release candidates must pass the private security
+conformance suite before distribution.
 
 ## Transfer Envelope
 
@@ -200,6 +204,14 @@ Transfer resume is required for large files. Resume negotiation must include:
 - Completed chunk ranges.
 - Destination staging state.
 - Current file hash state or chunk verification state.
+
+The durable resume state is the transfer checkpoint
+(`core/beamdrop-core/beamdrop-transfer`, `TransferCheckpoint`, format version
+1): a JSON record of transfer ID, file size, chunk size, total chunks,
+expected SHA-256, and the set of completed chunk indexes. Receivers persist it
+after every verified chunk and revalidate every invariant on reload, so a
+corrupted checkpoint cannot smuggle in an inconsistent resume state. The
+`missingChunks` from the reloaded checkpoint drive retransmission.
 
 Resume must fail safely if:
 

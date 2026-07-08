@@ -54,10 +54,13 @@ Pairing should protect against:
 
 ## Transfer Security
 
-All production transfer sessions must use authenticated encryption. The current
-local MVP protocol enforces explicit trust, manifest validation, chunking, and
-final SHA-256 verification, but unauthenticated local TCP payload encryption
-remains a release-blocking gap before production.
+Production transfer sessions must use reviewed authenticated encryption.
+Release candidates must pass the private security conformance suite before any
+public distribution. Public documentation should describe guarantees and
+requirements, not implementation-sensitive derivation details.
+
+The local protocol additionally enforces explicit trust, manifest validation,
+chunking, and final SHA-256 verification of the assembled payload.
 
 Received files must remain in a staging location until verification succeeds.
 If verification fails, the transfer must be marked failed and staged content

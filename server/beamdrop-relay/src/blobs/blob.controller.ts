@@ -37,7 +37,7 @@ export class BlobController {
   @Post("blobs/:token")
   async upload(@Param("token") token: string, @Req() request: RawBodyRequest<Request>) {
     const record = this.tokens.requireValid(token);
-    const rawBody = request.rawBody;
+    const rawBody = request.rawBody ?? (Buffer.isBuffer(request.body) ? request.body : undefined);
     if (!rawBody || rawBody.length === 0) {
       throw new BadRequestException("Encrypted blob body is required.");
     }

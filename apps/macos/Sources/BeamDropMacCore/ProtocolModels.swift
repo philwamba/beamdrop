@@ -5,6 +5,7 @@ public enum BeamDropProtocol {
     public static let serviceName = "_beamdrop._tcp"
     public static let defaultTransferPort = 49320
     public static let defaultChunkSizeBytes: Int64 = 4 * 1024 * 1024
+    public static let sessionEncryptionScheme = "BEAMDROP_SESSION_V1"
 }
 
 public enum BeamDropPlatform: String, Codable, Sendable, CaseIterable {
@@ -59,6 +60,9 @@ public enum BeamDropError: Error, LocalizedError, Equatable {
     case networkUnavailable(String)
     case fileAccessFailed(String)
     case clipboardBlocked(String)
+    case invalidFileName
+    case invalidEncryptionMetadata(String)
+    case encryptionFailure(String)
 
     public var errorDescription: String? {
         switch self {
@@ -92,6 +96,12 @@ public enum BeamDropError: Error, LocalizedError, Equatable {
             return "File access failed: \(reason)"
         case .clipboardBlocked(let reason):
             return "Clipboard was not sent: \(reason)"
+        case .invalidFileName:
+            return "File name must not contain path separators or control characters."
+        case .invalidEncryptionMetadata(let reason):
+            return "Transfer encryption metadata is invalid: \(reason)"
+        case .encryptionFailure(let reason):
+            return "Transfer encryption failed: \(reason)"
         }
     }
 }

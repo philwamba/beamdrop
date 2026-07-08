@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { BlobController } from "./blobs/blob.controller";
 import { CleanupService } from "./cleanup/cleanup.service";
 import { HealthController } from "./health/health.controller";
@@ -26,6 +27,10 @@ import { RelayConfig } from "./common/relay.config";
     {
       provide: "BlobStorage",
       useClass: InMemoryBlobStorage
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
     }
   ]
 })

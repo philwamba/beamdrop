@@ -18,6 +18,22 @@ public struct TransferPayloadMetadata: Codable, Equatable, Sendable {
     }
 }
 
+/// Authenticated session encryption parameters. When present, every payload
+/// chunk is sealed with the BeamDrop session protocol; receivers derive the
+/// session key from the ephemeral public key plus the paired sender public key.
+public struct TransferEncryption: Codable, Equatable, Sendable {
+    public static let sessionV1Scheme = "BEAMDROP_SESSION_V1"
+
+    public var scheme: String
+    /// Hex-encoded 32-byte X25519 ephemeral public key.
+    public var ephemeralPublicKey: String
+
+    public init(scheme: String = TransferEncryption.sessionV1Scheme, ephemeralPublicKey: String) {
+        self.scheme = scheme
+        self.ephemeralPublicKey = ephemeralPublicKey
+    }
+}
+
 public struct TransferEnvelope: Codable, Equatable, Sendable {
     public var protocolVersion: String
     public var transferId: String
@@ -26,9 +42,10 @@ public struct TransferEnvelope: Codable, Equatable, Sendable {
     public var senderPublicKey: String
     public var receiverDeviceId: String
     public var createdAt: Date
+    public var encryption: TransferEncryption?
     public var payloadMetadata: TransferPayloadMetadata
 
-    public init(protocolVersion: String = BeamDropProtocol.version, transferId: String, transferType: TransferKind, senderDeviceId: String, senderPublicKey: String, receiverDeviceId: String, createdAt: Date = Date(), payloadMetadata: TransferPayloadMetadata) {
+    public init(protocolVersion: String = BeamDropProtocol.version, transferId: String, transferType: TransferKind, senderDeviceId: String, senderPublicKey: String, receiverDeviceId: String, createdAt: Date = Date(), encryption: TransferEncryption? = nil, payloadMetadata: TransferPayloadMetadata) {
         self.protocolVersion = protocolVersion
         self.transferId = transferId
         self.transferType = transferType
@@ -36,6 +53,7 @@ public struct TransferEnvelope: Codable, Equatable, Sendable {
         self.senderPublicKey = senderPublicKey
         self.receiverDeviceId = receiverDeviceId
         self.createdAt = createdAt
+        self.encryption = encryption
         self.payloadMetadata = payloadMetadata
     }
 }
@@ -47,6 +65,8 @@ public enum TransferEnvelopeError: Error, Equatable, LocalizedError {
     case invalidChunkMetadata
     case missingHash
     case invalidFileName
+    case unsupportedEncryptionScheme
+    case invalidEphemeralPublicKey
 
     public var errorDescription: String? {
         switch self {
@@ -56,6 +76,8 @@ public enum TransferEnvelopeError: Error, Equatable, LocalizedError {
         case .invalidChunkMetadata: "Transfer chunk metadata does not match payload size."
         case .missingHash: "Transfer is missing final SHA-256."
         case .invalidFileName: "File name must not contain path separators or traversal segments."
+        case .unsupportedEncryptionScheme: "Transfer uses an unsupported encryption scheme."
+        case .invalidEphemeralPublicKey: "Transfer encryption requires a hex-encoded 32-byte ephemeral public key."
         }
     }
 }
@@ -97,6 +119,10 @@ public enum TransferEnvelopeCodec {
         guard envelope.payloadMetadata.chunkSize > 0 else { throw TransferEnvelopeError.invalidChunkSize }
         guard SafeSha256.isHexDigest(envelope.payloadMetadata.sha256) else { throw TransferEnvelopeError.missingHash }
         guard SafeTransferFileName.isSafe(envelope.payloadMetadata.fileName) else { throw TransferEnvelopeError.invalidFileName }
+        if let encryption = envelope.encryption {
+            guard encryption.scheme == TransferEncryption.sessionV1Scheme else { throw TransferEnvelopeError.unsupportedEncryptionScheme }
+            guard SafeSha256.isHexDigest(encryption.ephemeralPublicKey) else { throw TransferEnvelopeError.invalidEphemeralPublicKey }
+        }
         let expected = ChunkPlanner.totalChunks(sizeBytes: envelope.payloadMetadata.sizeBytes, chunkSize: envelope.payloadMetadata.chunkSize)
         guard envelope.payloadMetadata.totalChunks == expected else { throw TransferEnvelopeError.invalidChunkMetadata }
     }
