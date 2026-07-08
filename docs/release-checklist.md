@@ -70,31 +70,99 @@ Optional server release gates:
 
 ## Platform Readiness
 
-Android:
+### Android Release Checklist
 
-- Kotlin and Jetpack Compose app.
-- User-triggered clipboard send where required.
-- Foreground transfer behavior for long transfers.
-- Scoped storage handled correctly.
+- Build command: `scripts/build-android.sh`.
+- Test command: `gradle --no-daemon --max-workers=1 testDebugUnitTest`.
+- Signing requirement: Play App Signing or release keystore configured outside
+  the repo; no debug signing for release artifacts.
+- Permission review: `INTERNET`, network state, Wi-Fi state/multicast, Nearby
+  Wi-Fi Devices with `neverForLocation`, camera for QR scan, Android 13+
+  notifications, and foreground service only for active transfer progress.
+- Store policy risk: background clipboard behavior and foreground service
+  claims. Clipboard send must remain user-triggered and privacy copy must match
+  actual behavior.
+- Manual QA checklist: QR show/scan, local discovery denial/recovery,
+  Android-Windows text transfer, small file transfer, large chunked file
+  transfer, cancellation, corrupted hash failure, revoked peer rejection,
+  notification prompt/progress, scoped storage save/reopen.
+- Known limitations: release build was not verified in this audit because local
+  Gradle initialization was blocked by native Gradle cache/library access in the
+  sandbox; run the command on a configured Android release machine before
+  signing.
 
-iPhone:
+### iPhone Release Checklist
 
-- Swift and SwiftUI app.
-- No silent background clipboard monitoring.
-- Share Sheet, Shortcuts, or Paste clipboard workflows.
-- Local network and camera permission copy complete.
+- Build command: `scripts/build-ios.sh` for Swift package validation; archive
+  must be produced from the Xcode project/workspace once signing is configured.
+- Test command: `swift test` in `apps/ios/`.
+- Signing requirement: Apple Developer Team, App ID, App Group for the Share
+  Extension, provisioning profiles for app and extension, and TestFlight archive
+  validation.
+- Permission review: local network usage description, Bonjour `_beamdrop._tcp`,
+  camera only for QR scan, file/photo access only through picker/share flows.
+- Store policy risk: iPhone clipboard must not be described as silent background
+  sync. Use manual Paste, Share Sheet, and App Intents/Shortcuts language.
+- Manual QA checklist: onboarding, local network permission prompt, camera QR
+  scan, show QR, approve pairing, Share Extension send text/link/photo/file,
+  manual Paste send, receive prompt, save/export received file, cancellation,
+  history failure entry, revoked peer rejection.
+- Known limitations: Swift package tests pass, but App Store archive, device
+  signing, Share Extension entitlements, and full foreground transfer UI still
+  require Xcode/TestFlight validation.
 
-macOS:
+### macOS Release Checklist
 
-- SwiftUI/AppKit app.
-- Desktop clipboard feature is opt-in if present.
-- Finder or native file reveal behavior works.
+- Build command: `scripts/build-macos.sh`.
+- Test command: `swift test` in `apps/macos/`.
+- Signing requirement: Developer ID Application certificate, hardened runtime,
+  notarization, stapling, and sandbox/entitlement review if distributed through
+  the Mac App Store.
+- Permission review: local network/Bonjour behavior, file picker/save location,
+  notification prompts, and clipboard monitoring only if explicitly enabled.
+- Store policy risk: clipboard watching and local listener behavior must be
+  opt-in, visible, and documented.
+- Manual QA checklist: pair with Android/iPhone/Windows, send text/file/folder,
+  receive prompt, large file cancellation/resume where supported, reveal in
+  Finder, firewall/blocked Bonjour diagnostics, revoked peer rejection.
+- Known limitations: package/notarization path and final entitlements are not
+  proven; current script validates Swift package build/tests only.
 
-Windows:
+### Windows Release Checklist
 
-- C#, WinUI 3, Windows App SDK app.
-- Desktop clipboard feature is opt-in if present.
-- Windows notification and firewall guidance works.
+- Build command: `scripts/build-windows.ps1`.
+- Test command: `dotnet run --project apps/windows/Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj`.
+- Signing requirement: MSIX or installer signing certificate, Windows App SDK
+  packaging configuration, and production Credential Locker/DPAPI provider.
+- Permission review: Windows Firewall/local network prompt copy,
+  notification/tray behavior, file picker/save location, and clipboard policy.
+- Store policy risk: local listener and clipboard tray action must be disclosed;
+  clipboard sharing must be opt-in/pausable and must not log clipboard content.
+- Manual QA checklist: install on clean Windows machine, tray menu actions,
+  QR pair with Android/iPhone/macOS, send/receive text and files, large chunked
+  transfer, cancellation, corrupted hash failure, revoked peer rejection,
+  network diagnostics, settings persistence, uninstall cleanup.
+- Known limitations: WinUI packaging/MSIX publishing and store submission assets
+  are not proven; the active tested shell lives under `apps/windows/src/` while
+  top-level WinUI scaffold projects are still release-incomplete.
+
+### Shared Core, Protocol, and Server Checklist
+
+- Rust build/test command: `cargo test --workspace` in `core/beamdrop-core/`.
+- Protocol validation command: `find protocol/beamdrop-protocol -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool > /dev/null`.
+- Server test commands: `pnpm test` and `pnpm build` in both
+  `server/beamdrop-signaling/` and `server/beamdrop-relay/`.
+- Signing requirement: server container images must be built from tagged commits
+  and published with provenance; client release artifacts must include checksums.
+- Permission review: protocol and server docs must not imply the optional relay
+  is required for local transfer.
+- Store policy risk: relay/signaling must be described as optional future remote
+  infrastructure, not as required cloud storage for the MVP.
+- Manual QA checklist: schema examples parse, Rust protocol tests pass, relay
+  health/token expiry/max-size/cleanup tests pass, signaling health tests pass,
+  local transfers work with server offline.
+- Known limitations: JSON syntax validation is automated; full JSON Schema
+  semantic validation still needs an offline validator in CI.
 
 ## Testing Readiness
 

@@ -20,22 +20,6 @@ jobs:
         with:
           dotnet-version: "7.0.x"
 
-      - name: Restore active Windows app
-        working-directory: apps/windows
-        run: dotnet restore src/BeamDrop.Windows.App/BeamDrop.Windows.App.csproj
-
-      - name: Build active Windows app
-        working-directory: apps/windows
-        run: dotnet build src/BeamDrop.Windows.App/BeamDrop.Windows.App.csproj --no-restore
-
-      - name: Restore Windows tests
-        working-directory: apps/windows
-        run: dotnet restore Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj
-
-      - name: Build Windows tests
-        working-directory: apps/windows
-        run: dotnet build Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj --no-restore
-
-      - name: Run Windows tests
-        working-directory: apps/windows
-        run: dotnet run --project Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj --no-build
+      - name: Build and test Windows projects
+        shell: pwsh
+        run: ./scripts/build-windows.ps1

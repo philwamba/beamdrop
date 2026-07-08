@@ -144,3 +144,72 @@ Submission notes should explain:
 - iPhone clipboard sending is manual.
 - Android clipboard sending is user-triggered where required.
 - Public/corporate Wi-Fi may require manual IP or QR fallback.
+
+## Platform Submission Checklists
+
+### Android
+
+- Build command: `scripts/build-android.sh`.
+- Test command: `gradle --no-daemon --max-workers=1 testDebugUnitTest`.
+- Signing requirement: Play release track must use Play App Signing or a
+  protected release keystore; debug builds are not submission artifacts.
+- Permission review: confirm Nearby Wi-Fi Devices is used only for local device
+  discovery/transfer, camera is requested only for QR scan, notifications are
+  for transfer prompts/progress, and foreground service is limited to active
+  transfer progress.
+- Store policy risk: clipboard and foreground-service policy. Copy must state
+  that clipboard sending is user-triggered; no background clipboard monitoring.
+- Manual QA checklist: install release APK/AAB, first launch, permission denial
+  recovery, QR pairing, send/receive text, send/receive small file, large
+  transfer progress, cancellation, revoked peer rejection.
+- Known limitations: release signing and Play Console review are pending.
+
+### iPhone
+
+- Build command: `scripts/build-ios.sh` for package checks; App Store archive
+  must be built in Xcode after signing is configured.
+- Test command: `swift test` in `apps/ios/`.
+- Signing requirement: Apple Developer account, app and extension provisioning
+  profiles, App Group entitlement, TestFlight validation, and App Store privacy
+  nutrition labels.
+- Permission review: local network and Bonjour copy, camera QR scan purpose,
+  Share Extension payload handling, and no broad photo/file permissions outside
+  user-selected content.
+- Store policy risk: automatic clipboard claims. Submission metadata must say
+  manual Paste, Share Sheet, and Shortcuts/App Intents where applicable.
+- Manual QA checklist: TestFlight install, onboarding, QR scan, show QR,
+  Share Extension for text/link/photo/file, manual Paste send, receive prompt,
+  export/save received file, cancel transfer, reject unknown/revoked peer.
+- Known limitations: archive/signing, App Group production identifiers, and
+  end-to-end device transfer signoff remain pending.
+
+### macOS
+
+- Build command: `scripts/build-macos.sh`.
+- Test command: `swift test` in `apps/macos/`.
+- Signing requirement: Developer ID signing, hardened runtime, notarization,
+  stapling, and Mac App Store sandbox review if applicable.
+- Permission review: local network listener/discovery explanation, file access
+  through picker/save flows, notifications, and clipboard opt-in status.
+- Store policy risk: clipboard watching and local network listener disclosure.
+- Manual QA checklist: install notarized build, pair, send/receive text and
+  files, reveal received file, firewall diagnostics, cancellation, revoked peer
+  rejection.
+- Known limitations: notarized distributable and final sandbox entitlements are
+  not yet proven.
+
+### Windows
+
+- Build command: `scripts/build-windows.ps1`.
+- Test command: `dotnet run --project apps/windows/Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj`.
+- Signing requirement: signed MSIX or installer, trusted publisher certificate,
+  Windows App SDK packaging, and production Credential Locker/DPAPI integration.
+- Permission review: firewall/local network diagnostics, notifications/tray
+  behavior, file picker/save behavior, and clipboard opt-in/pause controls.
+- Store policy risk: clipboard automation and local listener behavior must be
+  disclosed; no content logging.
+- Manual QA checklist: install on clean Windows 11 machine, tray menu, QR
+  pairing, text/file transfer in both directions with Android/iPhone/macOS,
+  cancellation, corrupted hash history entry, revoked peer rejection.
+- Known limitations: MSIX packaging and Microsoft Store submission package are
+  pending.

@@ -93,6 +93,7 @@ pub struct TransferEnvelope {
     pub transfer_id: String,
     pub transfer_type: TransferType,
     pub sender_device_id: String,
+    pub sender_public_key: String,
     pub receiver_device_id: String,
     pub created_at: String,
     pub requires_approval: bool,
@@ -125,7 +126,9 @@ pub enum ProtocolError {
     NoFeatures,
     InvalidChunkSize,
     InvalidSha256,
+    InvalidFileName,
     MissingFileMetadata(&'static str),
+    MissingIntegrityMetadata(&'static str),
     MissingTextMetadata,
     MissingUrlMetadata,
     Json(String),
@@ -143,7 +146,11 @@ impl fmt::Display for ProtocolError {
             Self::NoFeatures => write!(f, "device advertisement must include at least one feature"),
             Self::InvalidChunkSize => write!(f, "chunk size must be greater than zero"),
             Self::InvalidSha256 => write!(f, "sha256 must be a 64-character hex string"),
+            Self::InvalidFileName => write!(f, "file name must not contain path separators"),
             Self::MissingFileMetadata(field) => write!(f, "file transfer missing metadata: {field}"),
+            Self::MissingIntegrityMetadata(field) => {
+                write!(f, "transfer missing integrity metadata: {field}")
+            }
             Self::MissingTextMetadata => write!(f, "text transfer missing text metadata"),
             Self::MissingUrlMetadata => write!(f, "URL transfer missing URL metadata"),
             Self::Json(message) => write!(f, "json error: {message}"),
@@ -216,8 +223,10 @@ impl Validate for TransferEnvelope {
         validate_protocol_version(&self.protocol_version)?;
         validate_non_empty("transferId", &self.transfer_id)?;
         validate_non_empty("senderDeviceId", &self.sender_device_id)?;
+        validate_non_empty("senderPublicKey", &self.sender_public_key)?;
         validate_non_empty("receiverDeviceId", &self.receiver_device_id)?;
         validate_non_empty("createdAt", &self.created_at)?;
+        validate_integrity_metadata(&self.payload_metadata)?;
 
         if self.transfer_type.requires_file_metadata() {
             validate_file_metadata(&self.payload_metadata)?;
@@ -284,7 +293,15 @@ fn validate_non_empty(field: &'static str, value: &str) -> Result<(), ProtocolEr
 }
 
 fn validate_file_metadata(metadata: &PayloadMetadata) -> Result<(), ProtocolError> {
-    require_some(metadata.file_name.as_ref(), "fileName")?;
+    let file_name = require_file_some(metadata.file_name.as_ref(), "fileName")?;
+    if !is_safe_file_name(file_name) {
+        return Err(ProtocolError::InvalidFileName);
+    }
+    require_file_some(metadata.mime_type.as_ref(), "mimeType")?;
+    Ok(())
+}
+
+fn validate_integrity_metadata(metadata: &PayloadMetadata) -> Result<(), ProtocolError> {
     require_some(metadata.mime_type.as_ref(), "mimeType")?;
     require_some(metadata.size_bytes, "sizeBytes")?;
     require_some(metadata.chunk_size, "chunkSize")?;
@@ -300,12 +317,27 @@ fn validate_file_metadata(metadata: &PayloadMetadata) -> Result<(), ProtocolErro
     Ok(())
 }
 
-fn require_some<T>(value: Option<T>, field: &'static str) -> Result<T, ProtocolError> {
+fn require_file_some<T>(value: Option<T>, field: &'static str) -> Result<T, ProtocolError> {
     value.ok_or(ProtocolError::MissingFileMetadata(field))
+}
+
+fn require_some<T>(value: Option<T>, field: &'static str) -> Result<T, ProtocolError> {
+    value.ok_or(ProtocolError::MissingIntegrityMetadata(field))
 }
 
 pub fn is_valid_sha256(value: &str) -> bool {
     value.len() == 64 && value.chars().all(|char| char.is_ascii_hexdigit())
+}
+
+pub fn is_safe_file_name(value: &str) -> bool {
+    let trimmed = value.trim();
+    !trimmed.is_empty()
+        && trimmed != "."
+        && trimmed != ".."
+        && !trimmed.contains('/')
+        && !trimmed.contains('\\')
+        && !trimmed.contains(':')
+        && trimmed.chars().all(|char| !char.is_control())
 }
 
 #[cfg(test)]
@@ -372,6 +404,7 @@ mod tests {
             transfer_id: "tx-file-01J2M8X0E11Y0Y9QVT38A0BHR5".to_owned(),
             transfer_type: TransferType::File,
             sender_device_id: "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A".to_owned(),
+            sender_public_key: "macos-public-key".to_owned(),
             receiver_device_id: "bd-windows-01J2M8W7Z6HD1DYQKFE1X6V904".to_owned(),
             created_at: "2026-07-06T14:27:18Z".to_owned(),
             requires_approval: true,
@@ -401,6 +434,7 @@ mod tests {
             transfer_id: "tx-file-01J2M8X0E11Y0Y9QVT38A0BHR5".to_owned(),
             transfer_type: TransferType::File,
             sender_device_id: "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A".to_owned(),
+            sender_public_key: "macos-public-key".to_owned(),
             receiver_device_id: "bd-windows-01J2M8W7Z6HD1DYQKFE1X6V904".to_owned(),
             created_at: "2026-07-06T14:27:18Z".to_owned(),
             requires_approval: true,
@@ -417,7 +451,33 @@ mod tests {
 
         assert_eq!(
             envelope.validate(),
-            Err(ProtocolError::MissingFileMetadata("sha256"))
+            Err(ProtocolError::MissingIntegrityMetadata("sha256"))
         );
+    }
+
+    #[test]
+    fn rejects_path_traversal_file_name() {
+        let envelope = TransferEnvelope {
+            protocol_version: PROTOCOL_VERSION.to_owned(),
+            transfer_id: "tx-file-01J2M8X0E11Y0Y9QVT38A0BHR5".to_owned(),
+            transfer_type: TransferType::File,
+            sender_device_id: "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A".to_owned(),
+            sender_public_key: "macos-public-key".to_owned(),
+            receiver_device_id: "bd-windows-01J2M8W7Z6HD1DYQKFE1X6V904".to_owned(),
+            created_at: "2026-07-06T14:27:18Z".to_owned(),
+            requires_approval: true,
+            resume_supported: true,
+            payload_metadata: PayloadMetadata {
+                file_name: Some("../secret.txt".to_owned()),
+                mime_type: Some("text/plain".to_owned()),
+                size_bytes: Some(1),
+                chunk_size: Some(DEFAULT_CHUNK_SIZE_BYTES),
+                total_chunks: Some(1),
+                sha256: Some("f".repeat(64)),
+                ..PayloadMetadata::default()
+            },
+        };
+
+        assert_eq!(envelope.validate(), Err(ProtocolError::InvalidFileName));
     }
 }

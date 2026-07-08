@@ -11,6 +11,9 @@ try {
     dotnet restore "Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj"
     dotnet build "Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj" --no-restore
     dotnet run --project "Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj" --no-build
+    dotnet restore "Tests/Tests.csproj"
+    dotnet build "Tests/Tests.csproj" --no-restore
+    dotnet run --project "Tests/Tests.csproj" --no-build
 }
 finally {
     Pop-Location

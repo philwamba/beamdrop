@@ -27,5 +27,4 @@ jobs:
           gradle-version: "8.13"
 
       - name: Test and assemble release
-        working-directory: apps/android
-        run: gradle --no-daemon --max-workers=1 testDebugUnitTest assembleRelease
+        run: scripts/build-android.sh

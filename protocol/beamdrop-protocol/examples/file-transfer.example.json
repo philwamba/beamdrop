@@ -3,6 +3,7 @@
   "transferId": "tx-file-01J2M8X0E11Y0Y9QVT38A0BHR5",
   "transferType": "FILE",
   "senderDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
+  "senderPublicKey": "MCowBQYDK2VuAyEAtqzFJY2dveH2WrN9q9NqbcMTFq0QnV8DScjQ7kSy3xY=",
   "receiverDeviceId": "bd-windows-01J2M8W7Z6HD1DYQKFE1X6V904",
   "createdAt": "2026-07-06T14:27:18Z",
   "requiresApproval": true,

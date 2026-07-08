@@ -41,7 +41,7 @@ wrapper, or browser-only application.
 | Area | Status |
 | --- | --- |
 | Android | ![Android: MVP transfer work](https://img.shields.io/badge/Android-MVP%20transfer%20work-3ddc84) |
-| iPhone | ![iPhone: planned](https://img.shields.io/badge/iPhone-planned-6b7280) |
+| iPhone | ![iPhone: native foundation](https://img.shields.io/badge/iPhone-native%20foundation-111827) |
 | macOS | ![macOS: native foundation](https://img.shields.io/badge/macOS-native%20foundation-111827) |
 | Windows | ![Windows: MVP transfer work](https://img.shields.io/badge/Windows-MVP%20transfer%20work-0078d4) |
 | Shared Rust core | ![Rust core: foundation](https://img.shields.io/badge/Rust%20core-foundation-b7410e) |
@@ -69,11 +69,12 @@ native toolchain.
 
 | Target | Location | Command |
 | --- | --- | --- |
-| Android | `apps/android/` | `gradle testDebugUnitTest assembleRelease` |
-| macOS | `apps/macos/` | `swift build` |
-| macOS tests | `apps/macos/` | `swift test` |
-| Windows core/app | `apps/windows/` | `dotnet build` |
-| Rust core | `core/beamdrop-core/` | `cargo test` |
+| Android | `apps/android/` | `scripts/build-android.sh` |
+| iPhone | `apps/ios/` | `scripts/build-ios.sh` |
+| macOS | `apps/macos/` | `scripts/build-macos.sh` |
+| Windows | `apps/windows/` | `pwsh scripts/build-windows.ps1` |
+| Rust core | `core/beamdrop-core/` | `cargo test --workspace` |
+| Optional servers | `server/beamdrop-*` | `pnpm test && pnpm build` |
 
 Release automation will live under `.github/workflows/` and should produce
 signed, verifiable artifacts for each platform before downloads are published.
@@ -157,7 +158,8 @@ foundation, Android transfer work, Windows transfer work, and a native macOS app
 foundation.
 
 The project is not production-released yet. Public downloads will be added only
-after release builds are signed, tested, and documented.
+after release builds are signed, tested, documented, and transfer encryption plus
+real-device cross-platform QA are complete.
 
 ---
 

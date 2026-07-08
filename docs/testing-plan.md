@@ -8,6 +8,21 @@ platform privacy restrictions are respected.
 
 ## Test Categories
 
+### Release Command Matrix
+
+Run these commands before tagging a release candidate:
+
+| Area | Command | Current gate |
+| --- | --- | --- |
+| Android | `scripts/build-android.sh` | Required on a configured Android build host. |
+| iPhone | `scripts/build-ios.sh` | Swift package gate; Xcode archive still required for App Store/TestFlight. |
+| macOS | `scripts/build-macos.sh` | Swift package gate; notarized app packaging still required. |
+| Windows | `pwsh scripts/build-windows.ps1` | Required on Windows runner with Windows App SDK support. |
+| Rust core | `cd core/beamdrop-core && cargo test --workspace` | Required. |
+| Protocol JSON | `find protocol/beamdrop-protocol -name '*.json' -print0 \| xargs -0 -n1 python3 -m json.tool > /dev/null` | Syntax gate; semantic JSON Schema validation still needs an offline validator. |
+| Signaling server | `cd server/beamdrop-signaling && pnpm test && pnpm build` | Required for optional server scaffolding. |
+| Relay server | `cd server/beamdrop-relay && pnpm test && pnpm build` | Required for optional server scaffolding. |
+
 ### Unit Tests
 
 Required coverage:
@@ -60,33 +75,43 @@ manual local-network checklist below on a Windows PC and Android device.
 
 Android:
 
+- Command: `gradle --no-daemon --max-workers=1 testDebugUnitTest`.
 - Share intent send.
 - User-triggered clipboard send.
 - Foreground transfer behavior.
 - Scoped storage.
 - Permission denial and recovery.
+- Release blocker if command cannot initialize Gradle or release assemble cannot
+  be produced on the signing machine.
 
 iPhone:
 
+- Command: `swift test`.
 - Share Sheet send.
 - Shortcuts or Paste-based clipboard send.
 - Local network permission.
 - Camera QR pairing.
 - App background interruption and resume.
+- Release blocker if Xcode archive/TestFlight validation fails even when Swift
+  package tests pass.
 
 macOS:
 
+- Command: `swift test` and `swift build`.
 - File and folder send.
 - Optional clipboard permission workflow.
 - Firewall/network diagnostics.
 - Reveal received file in Finder.
+- Release blocker if signing, hardened runtime, notarization, or stapling fails.
 
 Windows:
 
+- Command: `dotnet run --project Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj` and `dotnet run --project Tests/Tests.csproj`.
 - File and folder send.
 - Optional clipboard permission workflow.
 - Windows Firewall diagnostics.
 - Reveal received file in Explorer.
+- Release blocker if MSIX/installer signing or Windows App SDK packaging fails.
 
 ## Large File Requirements
 

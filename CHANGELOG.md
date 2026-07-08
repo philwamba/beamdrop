@@ -2,6 +2,34 @@
 
 All notable BeamDrop changes are tracked here.
 
+## 0.1.0-internal.1 - 2026-07-07
+
+### Added
+
+- Release-readiness checklists for Android, iPhone, macOS, Windows, shared Rust
+  core, protocol JSON, and optional server scaffolding.
+- Store submission notes with per-platform signing, permission, policy, manual
+  QA, and known-limitation requirements.
+- CI coverage for centralized platform build scripts plus Rust, protocol JSON,
+  signaling service, and relay service checks.
+
+### Changed
+
+- iOS build script now runs both Swift package tests and build.
+- Windows build script now runs both the active core test suite and the scaffold
+  persistence/settings/clipboard-policy tests.
+- Transfer envelope protocol schema and examples now require `senderPublicKey`
+  and final SHA-256 integrity metadata for every transfer envelope.
+- Rust protocol validation now rejects missing cross-transfer integrity metadata
+  and path-shaped file names.
+
+### Release Status
+
+- Internal testing only. Do not ship as production until Android release build,
+  iOS archive/TestFlight, macOS notarization, Windows MSIX/installer packaging,
+  authenticated transfer encryption, and real-device cross-platform QA are
+  completed.
+
 ## 0.1.0-internal.0 - 2026-07-06
 
 ### Added

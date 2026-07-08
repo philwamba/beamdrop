@@ -9,6 +9,7 @@
     "transferId",
     "transferType",
     "senderDeviceId",
+    "senderPublicKey",
     "receiverDeviceId",
     "createdAt",
     "payloadMetadata"
@@ -46,6 +47,11 @@
       "minLength": 16,
       "maxLength": 128
     },
+    "senderPublicKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
     "receiverDeviceId": {
       "type": "string",
       "minLength": 16,
@@ -66,6 +72,13 @@
     "payloadMetadata": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "mimeType",
+        "sizeBytes",
+        "chunkSize",
+        "totalChunks",
+        "sha256"
+      ],
       "properties": {
         "textPreview": {
           "type": "string",
@@ -79,7 +92,8 @@
         "fileName": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 255
+          "maxLength": 255,
+          "pattern": "^(?!\\.{1,2}$)[^/\\\\:\\u0000-\\u001F]+$"
         },
         "mimeType": {
           "type": "string",
@@ -146,11 +160,7 @@
           "payloadMetadata": {
             "required": [
               "fileName",
-              "mimeType",
-              "sizeBytes",
-              "chunkSize",
-              "totalChunks",
-              "sha256"
+              "mimeType"
             ]
           }
         }
@@ -169,11 +179,7 @@
           "payloadMetadata": {
             "required": [
               "fileName",
-              "mimeType",
-              "sizeBytes",
-              "chunkSize",
-              "totalChunks",
-              "sha256"
+              "mimeType"
             ]
           }
         }
@@ -190,7 +196,7 @@
       "then": {
         "properties": {
           "payloadMetadata": {
-            "required": ["textPreview", "sizeBytes"]
+            "required": ["textPreview"]
           }
         }
       }
@@ -206,7 +212,7 @@
       "then": {
         "properties": {
           "payloadMetadata": {
-            "required": ["url", "sizeBytes"]
+            "required": ["url"]
           }
         }
       }

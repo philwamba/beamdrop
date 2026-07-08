@@ -3,12 +3,17 @@
   "transferId": "tx-text-01J2M8VMM8RA6Q3EGK5QE5YB7J",
   "transferType": "TEXT",
   "senderDeviceId": "bd-ios-01J2M8R1N6NNYV6S5JX5H3FA0C",
+  "senderPublicKey": "MCowBQYDK2VuAyEAq37Fsc1O4u93fd1zCIh0zUg6JRZpyc6B2yU0ucqk7E0=",
   "receiverDeviceId": "bd-macos-01J2M8Q8RXE4KZ9G7V1N0Q4F2A",
   "createdAt": "2026-07-06T14:25:04Z",
   "requiresApproval": false,
   "resumeSupported": false,
   "payloadMetadata": {
     "textPreview": "Pick up the presentation from the shared drive and send the final PDF.",
-    "sizeBytes": 72
+    "mimeType": "text/plain",
+    "sizeBytes": 72,
+    "chunkSize": 4194304,
+    "totalChunks": 1,
+    "sha256": "2b6cb96b6d0c7932a6e16f15d8f1bcbf8b73c4a0d1bb4e6ec4d435a9d060b490"
   }
 }
