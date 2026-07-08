@@ -180,6 +180,12 @@ terminated envelope, payload bytes are streamed in buffers up to `chunkSize`
 bytes. Receivers validate total byte count against `sizeBytes`; partial payloads
 must be recorded as `Incomplete`.
 
+Encrypted transfers (envelopes with an `encryption` block) instead stream one
+sealed frame per chunk: a 4-byte big-endian sealed length followed by the
+sealed chunk bytes. Receivers must validate each frame length against the
+manifest chunk plan before decrypting, and any authentication failure fails
+the transfer. All four platforms share this framing.
+
 Chunks must be written to a staging area until the full file hash is verified.
 
 ## Hash Verification

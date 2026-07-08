@@ -151,7 +151,7 @@ public final class TransferService {
         if let session {
             for chunk in ChunkCalculator.chunks(sizeBytes: envelope.payloadMetadata.sizeBytes, chunkSize: envelope.payloadMetadata.chunkSize) {
                 let plaintext = data.subdata(in: Int(chunk.offset)..<Int(chunk.offset + chunk.length))
-                try sendData(session.sealChunk(plaintext, index: chunk.index), on: connection)
+                try sendData(Self.frameSealed(session.sealChunk(plaintext, index: chunk.index)), on: connection)
             }
         } else {
             try sendData(data, on: connection)
@@ -183,7 +183,7 @@ public final class TransferService {
             }
             try handle.seek(toOffset: UInt64(chunk.offset))
             let data = try handle.read(upToCount: Int(chunk.length)) ?? Data()
-            try sendData(session.map { try $0.sealChunk(data, index: chunk.index) } ?? data, on: connection)
+            try sendData(session.map { Self.frameSealed(try $0.sealChunk(data, index: chunk.index)) } ?? data, on: connection)
             sent += Int64(data.count)
             progress?(makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: sent, startedAt: startedAt))
         }
@@ -371,17 +371,43 @@ public final class TransferService {
             completion(.success(sink.totalBytes))
             return
         }
-        readExactly(connection, count: Int(chunk.length) + SessionCrypto.sealedOverheadBytes, buffer: Data()) { [weak self] result in
+        readExactly(connection, count: MemoryLayout<UInt32>.size, buffer: Data()) { [weak self] headerResult in
             guard let self else { return }
             do {
-                let plaintext = try session.openChunk(result.get(), index: chunk.index)
-                let total = try sink.write(plaintext)
-                progress?(self.makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: total, startedAt: startedAt))
-                self.receiveSealedChunks(connection: connection, chunks: chunks.dropFirst(), session: session, sink: sink, envelope: envelope, peer: peer, startedAt: startedAt, progress: progress, completion: completion)
+                let sealedLength = try Self.sealedFrameLength(fromHeader: headerResult.get())
+                let expectedLength = Int(chunk.length) + SessionCrypto.sealedOverheadBytes
+                guard sealedLength == expectedLength else {
+                    throw BeamDropError.encryptionFailure("Sealed chunk \(chunk.index) frame is \(sealedLength) bytes but the manifest expects \(expectedLength).")
+                }
+                self.readExactly(connection, count: sealedLength, buffer: Data()) { [weak self] result in
+                    guard let self else { return }
+                    do {
+                        let plaintext = try session.openChunk(result.get(), index: chunk.index)
+                        let total = try sink.write(plaintext)
+                        progress?(self.makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: total, startedAt: startedAt))
+                        self.receiveSealedChunks(connection: connection, chunks: chunks.dropFirst(), session: session, sink: sink, envelope: envelope, peer: peer, startedAt: startedAt, progress: progress, completion: completion)
+                    } catch {
+                        completion(.failure(error))
+                    }
+                }
             } catch {
                 completion(.failure(error))
             }
         }
+    }
+
+    /// Cross-platform sealed frame: bigEndian32(sealedLength) || sealed bytes.
+    static func frameSealed(_ sealed: Data) -> Data {
+        var frame = withUnsafeBytes(of: UInt32(sealed.count).bigEndian) { Data($0) }
+        frame.append(sealed)
+        return frame
+    }
+
+    static func sealedFrameLength(fromHeader header: Data) throws -> Int {
+        guard header.count == MemoryLayout<UInt32>.size else {
+            throw BeamDropError.encryptionFailure("Sealed chunk frame header is truncated.")
+        }
+        return Int(header.withUnsafeBytes { $0.load(as: UInt32.self) }.bigEndian)
     }
 
     private func receivePlainBytes(

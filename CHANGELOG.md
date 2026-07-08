@@ -2,6 +2,16 @@
 
 All notable BeamDrop changes are tracked here.
 
+## Unreleased
+
+### Fixed
+
+- Encrypted transfers now use one sealed-chunk wire framing on every platform
+  (length-prefixed frames), so Android, iPhone, macOS, and Windows encrypted
+  transfers interoperate on all platform pairs. Windows and macOS were updated
+  to match the framing already used by Android and iPhone; receivers validate
+  each frame length against the manifest before decrypting.
+
 ## 0.1.0-internal.5 - 2026-07-08
 
 ### Changed

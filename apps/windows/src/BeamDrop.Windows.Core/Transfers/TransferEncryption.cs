@@ -96,7 +96,10 @@ public sealed class ChunkSealingStream : Stream
             if (_nextChunk >= _totalChunks) return 0;
             var plaintextSize = ChunkPlaintextSize(_plaintextSizeBytes, _chunkSizeBytes, _nextChunk);
             var plaintext = ReadExactly(_plaintext, plaintextSize);
-            _current = _session.SealChunk(_nextChunk, plaintext);
+            var sealedChunk = _session.SealChunk(_nextChunk, plaintext);
+            _current = new byte[sizeof(uint) + sealedChunk.Length];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(_current, (uint)sealedChunk.Length);
+            sealedChunk.CopyTo(_current, sizeof(uint));
             _currentOffset = 0;
             _nextChunk++;
         }
@@ -162,9 +165,15 @@ public sealed class ChunkOpeningStream : Stream
         while (_currentOffset >= _current.Length)
         {
             if (_nextChunk >= _totalChunks) return 0;
-            var sealedSize = ChunkSealingStream.ChunkPlaintextSize(_plaintextSizeBytes, _chunkSizeBytes, _nextChunk) + SessionCrypto.SealOverheadBytes;
-            var sealedChunk = ReadSealedChunk(sealedSize);
-            if (sealedChunk is null) return 0;
+            var header = ReadSealedChunk(sizeof(uint), allowEndOfStream: true);
+            if (header is null) return 0;
+            var sealedSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(header);
+            var expectedSize = ChunkSealingStream.ChunkPlaintextSize(_plaintextSizeBytes, _chunkSizeBytes, _nextChunk) + SessionCrypto.SealOverheadBytes;
+            if (sealedSize != expectedSize)
+            {
+                throw new SessionCryptoException($"Sealed chunk {_nextChunk} frame is {sealedSize} bytes but the manifest expects {expectedSize}.");
+            }
+            var sealedChunk = ReadSealedChunk((int)sealedSize, allowEndOfStream: false)!;
             _current = _session.OpenChunk(_nextChunk, sealedChunk);
             _currentOffset = 0;
             _nextChunk++;
@@ -175,7 +184,7 @@ public sealed class ChunkOpeningStream : Stream
         return read;
     }
 
-    private byte[]? ReadSealedChunk(int size)
+    private byte[]? ReadSealedChunk(int size, bool allowEndOfStream)
     {
         var buffer = new byte[size];
         var filled = 0;
@@ -184,7 +193,7 @@ public sealed class ChunkOpeningStream : Stream
             var read = _sealedPayload.Read(buffer, filled, size - filled);
             if (read == 0)
             {
-                if (filled == 0) return null;
+                if (filled == 0 && allowEndOfStream) return null;
                 throw new EndOfStreamException("Encrypted payload ended in the middle of a sealed chunk.");
             }
             filled += read;

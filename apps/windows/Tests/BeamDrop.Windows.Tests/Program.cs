@@ -402,7 +402,7 @@ internal sealed class WindowsTests
         var sealing = new ChunkSealingStream(new MemoryStream(payload), VectorSenderSession(), payload.Length, chunkSize);
         using var sealedStream = new MemoryStream();
         sealing.CopyTo(sealedStream);
-        AssertEqual(payload.Length + (4 * 28L), sealedStream.Length, "multi-chunk sealed size includes per-chunk overhead");
+        AssertEqual(payload.Length + (4 * 32L), sealedStream.Length, "multi-chunk sealed size includes per-chunk frame header and overhead");
 
         var opening = new ChunkOpeningStream(new MemoryStream(sealedStream.ToArray()), VectorReceiverSession(), payload.Length, chunkSize);
         using var plainStream = new MemoryStream();
@@ -412,7 +412,7 @@ internal sealed class WindowsTests
         var emptySealing = new ChunkSealingStream(new MemoryStream(), VectorSenderSession(), 0, chunkSize);
         using var emptySealed = new MemoryStream();
         emptySealing.CopyTo(emptySealed);
-        AssertEqual(28L, emptySealed.Length, "empty payload seals to a single empty chunk");
+        AssertEqual(32L, emptySealed.Length, "empty payload seals to a single empty framed chunk");
 
         var emptyOpening = new ChunkOpeningStream(new MemoryStream(emptySealed.ToArray()), VectorReceiverSession(), 0, chunkSize);
         using var emptyPlain = new MemoryStream();
@@ -486,8 +486,8 @@ internal sealed class WindowsTests
 
         AssertEqual(TransferStatus.Completed, sent.Status, "encrypted send completed");
         AssertTrue(transport.Manifest?.Encryption is not null, "encrypted envelope includes encryption block");
-        AssertEqual(payload.Length + 28L, transport.Sink.Length, "sealed payload carries nonce and tag overhead");
-        AssertFalse(transport.Sink.ToArray().AsSpan(12, payload.Length).SequenceEqual(payload), "sealed payload is not plaintext");
+        AssertEqual(payload.Length + 32L, transport.Sink.Length, "sealed payload carries frame header, nonce, and tag overhead");
+        AssertFalse(transport.Sink.ToArray().AsSpan(16, payload.Length).SequenceEqual(payload), "sealed payload is not plaintext");
 
         var receiverFixture = ReceiverFixture("bd-windows-sender", senderService.LocalPublicKeyBase64, receiverService);
         var received = await receiverFixture.Manager.ReceiveFileAsync(
@@ -539,7 +539,7 @@ internal sealed class WindowsTests
 
         var record = await fixture.Manager.ReceiveFileAsync(
             new IncomingTransferRequest(manifest, new TransferPeer(PeerId, "Laptop", PublicKey, AutoAcceptTransfers: true)),
-            new MemoryStream(new byte[5 + 28]),
+            new MemoryStream(new byte[5 + 32]),
             CancellationToken.None);
 
         AssertEqual(TransferStatus.Failed, record.Status, "encrypted transfer without configured session encryption fails");

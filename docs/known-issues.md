@@ -15,7 +15,7 @@ Markdown.
 | KI-005 | iPhone release | Open | Signed archive, extension, and TestFlight validation are pending. |
 | KI-006 | macOS release | Open | Signed and notarized package validation is pending. |
 | KI-007 | Windows release | Open | Signed package/installer validation is pending. |
-| KI-008 | Protocol validation | Open | CI should continue expanding schema and fixture validation. |
+| KI-008 | Protocol validation | Mitigated | Semantic schema validation of all protocol examples now runs in CI; fixture coverage can continue to expand. |
 | KI-009 | Discovery fallback | Open | Blocked-network fallback needs real-network QA evidence. |
 | KI-010 | Clipboard UX | Open | Manual/opt-in clipboard behavior needs platform UI QA evidence. |
 
@@ -26,3 +26,9 @@ Markdown.
 | FIX-001 | QA planning | Expanded E2E matrix and manual cases for required platform pairs and flows. |
 | FIX-002 | Local diagnostics | Added a local network diagnostic script for discovery and reachability checks. |
 | FIX-003 | Release evidence | Added signoff and known-issue tracking so unrun flows are visible. |
+| FIX-004 | Transfer security | Implemented authenticated session encryption across core and all four apps, verified by shared conformance vectors in every platform test suite. |
+| FIX-005 | Encrypted framing | Unified the sealed-chunk wire framing across Android, iPhone, macOS, and Windows so encrypted transfers interoperate on every platform pair. |
+| FIX-006 | Resume durability | Added a validated, crash-safe transfer checkpoint format driving missing-chunk retransmission. |
+| FIX-007 | Protocol validation | Automated semantic JSON Schema validation of protocol examples in CI with a pinned offline validator. |
+| FIX-008 | Server hardening | Signaling now requires token-bound device sessions; rate limiting is enforced; relay cleanup runs on a schedule; relay upload/download paths are covered by tests. |
+| FIX-009 | Windows secret storage | Added a DPAPI-backed production secret protector with a cross-platform test fallback. |
