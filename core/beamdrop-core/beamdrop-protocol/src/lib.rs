@@ -98,7 +98,18 @@ pub struct TransferEnvelope {
     pub created_at: String,
     pub requires_approval: bool,
     pub resume_supported: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encryption: Option<EncryptionParameters>,
     pub payload_metadata: PayloadMetadata,
+}
+
+pub const ENCRYPTION_SCHEME_SESSION_V1: &str = "BEAMDROP_SESSION_V1";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EncryptionParameters {
+    pub scheme: String,
+    pub ephemeral_public_key: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,6 +142,8 @@ pub enum ProtocolError {
     MissingIntegrityMetadata(&'static str),
     MissingTextMetadata,
     MissingUrlMetadata,
+    UnsupportedEncryptionScheme(String),
+    InvalidEphemeralPublicKey,
     Json(String),
 }
 
@@ -153,6 +166,12 @@ impl fmt::Display for ProtocolError {
             }
             Self::MissingTextMetadata => write!(f, "text transfer missing text metadata"),
             Self::MissingUrlMetadata => write!(f, "URL transfer missing URL metadata"),
+            Self::UnsupportedEncryptionScheme(scheme) => {
+                write!(f, "unsupported encryption scheme {scheme}")
+            }
+            Self::InvalidEphemeralPublicKey => {
+                write!(f, "ephemeralPublicKey must be 64 hex characters")
+            }
             Self::Json(message) => write!(f, "json error: {message}"),
         }
     }
@@ -227,6 +246,22 @@ impl Validate for TransferEnvelope {
         validate_non_empty("receiverDeviceId", &self.receiver_device_id)?;
         validate_non_empty("createdAt", &self.created_at)?;
         validate_integrity_metadata(&self.payload_metadata)?;
+
+        if let Some(encryption) = &self.encryption {
+            if encryption.scheme != ENCRYPTION_SCHEME_SESSION_V1 {
+                return Err(ProtocolError::UnsupportedEncryptionScheme(
+                    encryption.scheme.clone(),
+                ));
+            }
+            if encryption.ephemeral_public_key.len() != 64
+                || !encryption
+                    .ephemeral_public_key
+                    .bytes()
+                    .all(|b| b.is_ascii_hexdigit())
+            {
+                return Err(ProtocolError::InvalidEphemeralPublicKey);
+            }
+        }
 
         if self.transfer_type.requires_file_metadata() {
             validate_file_metadata(&self.payload_metadata)?;

@@ -69,6 +69,26 @@
       "type": "boolean",
       "default": false
     },
+    "encryption": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Authenticated session encryption parameters. When present, every payload chunk is sealed with the BeamDrop session protocol; receivers derive the session key from the ephemeral public key plus the paired sender public key.",
+      "required": [
+        "scheme",
+        "ephemeralPublicKey"
+      ],
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "const": "BEAMDROP_SESSION_V1"
+        },
+        "ephemeralPublicKey": {
+          "type": "string",
+          "description": "Hex-encoded 32-byte X25519 ephemeral public key.",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
     "payloadMetadata": {
       "type": "object",
       "additionalProperties": false,

@@ -8,6 +8,10 @@
   "createdAt": "2026-07-06T14:25:04Z",
   "requiresApproval": false,
   "resumeSupported": false,
+  "encryption": {
+    "scheme": "BEAMDROP_SESSION_V1",
+    "ephemeralPublicKey": "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b"
+  },
   "payloadMetadata": {
     "textPreview": "Pick up the presentation from the shared drive and send the final PDF.",
     "mimeType": "text/plain",
