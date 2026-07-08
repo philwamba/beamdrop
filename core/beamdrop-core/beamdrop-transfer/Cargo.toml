@@ -6,3 +6,5 @@ license.workspace = true
 
 [dependencies]
 beamdrop-crypto = { path = "../beamdrop-crypto" }
+serde.workspace = true
+serde_json.workspace = true

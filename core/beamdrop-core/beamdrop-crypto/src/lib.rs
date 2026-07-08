@@ -2,6 +2,13 @@ use sha2::{Digest, Sha256};
 use std::error::Error;
 use std::fmt;
 
+pub mod session;
+
+pub use session::{
+    SessionHandshake, StaticSecretKey, TransferSession, NONCE_LENGTH, SESSION_KEY_LENGTH,
+    SESSION_PROTOCOL_VERSION, TAG_LENGTH, X25519_KEY_LENGTH,
+};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey {
     bytes: Vec<u8>,
@@ -112,7 +119,15 @@ pub enum CryptoError {
     EmptyPublicKey,
     EmptyPrivateKeyHandle,
     EncryptionUnavailable,
+    EncryptionFailed,
     DecryptionFailed,
+    InvalidKeyLength,
+    InvalidPeerKey,
+    InvalidCiphertext,
+    InvalidContext,
+    ContextMismatch,
+    UnsupportedSessionVersion(u8),
+    RandomSourceUnavailable,
 }
 
 impl fmt::Display for CryptoError {
@@ -123,7 +138,17 @@ impl fmt::Display for CryptoError {
             Self::EncryptionUnavailable => {
                 write!(f, "payload encryption provider has not been configured")
             }
+            Self::EncryptionFailed => write!(f, "payload encryption failed"),
             Self::DecryptionFailed => write!(f, "payload decryption failed"),
+            Self::InvalidKeyLength => write!(f, "key must be exactly 32 bytes"),
+            Self::InvalidPeerKey => write!(f, "peer public key is invalid or low-order"),
+            Self::InvalidCiphertext => write!(f, "sealed payload is malformed"),
+            Self::InvalidContext => write!(f, "encryption context fields must not be empty"),
+            Self::ContextMismatch => write!(f, "payload context does not match session context"),
+            Self::UnsupportedSessionVersion(version) => {
+                write!(f, "unsupported session protocol version {version}")
+            }
+            Self::RandomSourceUnavailable => write!(f, "operating system RNG unavailable"),
         }
     }
 }

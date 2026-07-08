@@ -1,7 +1,11 @@
-use beamdrop_crypto::verify_sha256;
+use beamdrop_crypto::{verify_sha256, CryptoError, TransferSession};
 use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt;
+
+pub mod checkpoint;
+
+pub use checkpoint::{TransferCheckpoint, CHECKPOINT_FORMAT_VERSION};
 
 pub const DEFAULT_CHUNK_SIZE_BYTES: u64 = 4 * 1024 * 1024;
 
@@ -65,6 +69,18 @@ pub enum TransferError {
     InvalidChunkSize,
     MissingTransferId,
     CompletedChunkOutOfRange { chunk_index: u64, total_chunks: u64 },
+    ChunkSizeMismatch { chunk_index: u64, expected: u64, actual: u64 },
+    InvalidExpectedHash,
+    CheckpointSerializationFailed,
+    CheckpointParseFailed,
+    UnsupportedCheckpointVersion(u32),
+    Encryption(CryptoError),
+}
+
+impl From<CryptoError> for TransferError {
+    fn from(error: CryptoError) -> Self {
+        Self::Encryption(error)
+    }
 }
 
 impl fmt::Display for TransferError {
@@ -79,6 +95,23 @@ impl fmt::Display for TransferError {
                 f,
                 "completed chunk {chunk_index} is outside total chunk count {total_chunks}"
             ),
+            Self::ChunkSizeMismatch {
+                chunk_index,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "chunk {chunk_index} payload is {actual} bytes but the plan expects {expected}"
+            ),
+            Self::InvalidExpectedHash => {
+                write!(f, "expected hash must be a 64-character SHA-256 hex digest")
+            }
+            Self::CheckpointSerializationFailed => write!(f, "checkpoint serialization failed"),
+            Self::CheckpointParseFailed => write!(f, "checkpoint is not valid JSON"),
+            Self::UnsupportedCheckpointVersion(version) => {
+                write!(f, "unsupported checkpoint format version {version}")
+            }
+            Self::Encryption(error) => write!(f, "chunk encryption failed: {error}"),
         }
     }
 }
@@ -156,6 +189,44 @@ pub fn verify_final_hash(payload: &[u8], expected_sha256_hex: &str) -> bool {
     verify_sha256(payload, expected_sha256_hex)
 }
 
+/// Seals one planned chunk for the wire. The payload length must match the
+/// chunk plan so a desynced sender fails loudly instead of producing a file
+/// that only fails at final-hash time.
+pub fn seal_planned_chunk(
+    session: &TransferSession,
+    chunk: &ChunkMetadata,
+    payload: &[u8],
+) -> Result<Vec<u8>, TransferError> {
+    if payload.len() as u64 != chunk.size {
+        return Err(TransferError::ChunkSizeMismatch {
+            chunk_index: chunk.index,
+            expected: chunk.size,
+            actual: payload.len() as u64,
+        });
+    }
+    Ok(session.seal_chunk(chunk.index, payload)?)
+}
+
+/// Opens one received chunk, authenticates it, checks it against the plan,
+/// and records it in the checkpoint so the transfer can resume after a crash.
+pub fn open_planned_chunk(
+    session: &TransferSession,
+    chunk: &ChunkMetadata,
+    sealed: &[u8],
+    checkpoint: &mut TransferCheckpoint,
+) -> Result<Vec<u8>, TransferError> {
+    let payload = session.open_chunk(chunk.index, sealed)?;
+    if payload.len() as u64 != chunk.size {
+        return Err(TransferError::ChunkSizeMismatch {
+            chunk_index: chunk.index,
+            expected: chunk.size,
+            actual: payload.len() as u64,
+        });
+    }
+    checkpoint.record_chunk(chunk.index)?;
+    Ok(payload)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,5 +276,141 @@ mod tests {
         let expected = "f7ca7c61125005f4ec9b024022a08bc887908206357c8ebf29595d738f6b14a4";
 
         assert!(verify_final_hash(payload, expected));
+    }
+
+    mod encrypted_pipeline {
+        use super::super::*;
+        use beamdrop_crypto::{sha256_hex, EncryptionContext, StaticSecretKey};
+
+        fn sessions() -> (TransferSession, TransferSession) {
+            let sender_secret = StaticSecretKey::from_bytes([0x11; 32]);
+            let receiver_secret = StaticSecretKey::from_bytes([0x22; 32]);
+            let context = EncryptionContext {
+                sender_device_id: "sender".to_owned(),
+                receiver_device_id: "receiver".to_owned(),
+                transfer_id: "tx-pipeline-01".to_owned(),
+            };
+            let (handshake, sender_session) = TransferSession::initiate(
+                &sender_secret,
+                &receiver_secret.public_key(),
+                &context,
+            )
+            .expect("initiate");
+            let receiver_session = TransferSession::accept(
+                &receiver_secret,
+                &sender_secret.public_key(),
+                &handshake,
+                &context,
+            )
+            .expect("accept");
+            (sender_session, receiver_session)
+        }
+
+        #[test]
+        fn transfers_file_encrypted_with_resume_after_interruption() {
+            let (sender_session, receiver_session) = sessions();
+
+            let file: Vec<u8> = (0..10_000u32).flat_map(|i| i.to_le_bytes()).collect();
+            let chunk_size = 16 * 1024;
+            let plan = calculate_chunks(file.len() as u64, chunk_size).expect("plan");
+            let expected_hash = sha256_hex(&file);
+
+            let mut checkpoint = TransferCheckpoint::new(
+                "tx-pipeline-01",
+                file.len() as u64,
+                chunk_size,
+                plan.total_chunks,
+                expected_hash.clone(),
+            )
+            .expect("checkpoint");
+
+            let mut received = vec![0u8; file.len()];
+            // First attempt: connection drops after the first chunk.
+            for chunk in plan.chunks.iter().take(1) {
+                let payload =
+                    &file[chunk.offset as usize..(chunk.offset + chunk.size) as usize];
+                let sealed =
+                    seal_planned_chunk(&sender_session, chunk, payload).expect("seal");
+                let opened =
+                    open_planned_chunk(&receiver_session, chunk, &sealed, &mut checkpoint)
+                        .expect("open");
+                received[chunk.offset as usize..(chunk.offset + chunk.size) as usize]
+                    .copy_from_slice(&opened);
+            }
+
+            // Simulate crash: persist and reload the checkpoint.
+            let restored = TransferCheckpoint::from_json(
+                &checkpoint.to_json().expect("serialize"),
+            )
+            .expect("restore");
+            let mut checkpoint = restored;
+            let resume = checkpoint.resume_plan().expect("resume plan");
+            assert!(!resume.missing_chunks.is_empty());
+
+            // Second attempt: send only the missing chunks.
+            for index in resume.missing_chunks {
+                let chunk = plan.chunks[index as usize];
+                let payload =
+                    &file[chunk.offset as usize..(chunk.offset + chunk.size) as usize];
+                let sealed =
+                    seal_planned_chunk(&sender_session, &chunk, payload).expect("seal");
+                let opened =
+                    open_planned_chunk(&receiver_session, &chunk, &sealed, &mut checkpoint)
+                        .expect("open");
+                received[chunk.offset as usize..(chunk.offset + chunk.size) as usize]
+                    .copy_from_slice(&opened);
+            }
+
+            assert!(checkpoint.is_complete());
+            assert!(verify_final_hash(&received, &expected_hash));
+            assert_eq!(received, file);
+        }
+
+        #[test]
+        fn rejects_payload_that_does_not_match_plan() {
+            let (sender_session, _) = sessions();
+            let plan = calculate_chunks(100, 64).expect("plan");
+
+            assert!(matches!(
+                seal_planned_chunk(&sender_session, &plan.chunks[0], b"short"),
+                Err(TransferError::ChunkSizeMismatch { .. })
+            ));
+        }
+
+        #[test]
+        fn rejects_chunk_sealed_for_other_transfer() {
+            let (sender_session, receiver_session) = sessions();
+
+            let other_context = EncryptionContext {
+                sender_device_id: "sender".to_owned(),
+                receiver_device_id: "receiver".to_owned(),
+                transfer_id: "tx-other".to_owned(),
+            };
+            let (handshake, other_sender) = TransferSession::initiate(
+                &StaticSecretKey::from_bytes([0x11; 32]),
+                &StaticSecretKey::from_bytes([0x22; 32]).public_key(),
+                &other_context,
+            )
+            .expect("initiate");
+            let _ = (handshake, &receiver_session);
+
+            let plan = calculate_chunks(5, 64).expect("plan");
+            let sealed =
+                seal_planned_chunk(&other_sender, &plan.chunks[0], b"hello").expect("seal");
+
+            let mut checkpoint = TransferCheckpoint::new(
+                "tx-pipeline-01",
+                5,
+                64,
+                1,
+                "f7ca7c61125005f4ec9b024022a08bc887908206357c8ebf29595d738f6b14a4",
+            )
+            .expect("checkpoint");
+            assert!(matches!(
+                open_planned_chunk(&receiver_session, &plan.chunks[0], &sealed, &mut checkpoint),
+                Err(TransferError::Encryption(_))
+            ));
+            assert!(checkpoint.completed_chunks.is_empty());
+        }
     }
 }
