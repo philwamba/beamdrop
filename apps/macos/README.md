@@ -51,9 +51,8 @@ swift run BeamDropMacApp
 
 ## Current Limitations
 
-- Camera-based QR scanning is not implemented; paste/import pairing payload is
-  provided for QR import fallback.
-- Folder transfer is not implemented yet; files are supported.
+- Camera-based QR scanning is planned; paste/import pairing payload is provided
+  for QR import fallback.
+- Folder transfer is planned; files are supported.
 - Persisted cross-restart transfer resume is not complete.
-- Full authenticated encrypted transport is future work; the MVP enforces
-  paired-device trust and public-key matching.
+- Production security qualification is pending before public distribution.

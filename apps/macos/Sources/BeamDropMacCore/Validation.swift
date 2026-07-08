@@ -26,6 +26,19 @@ public enum PairingValidator {
     }
 }
 
+public enum FileNameValidator {
+    public static func isSafe(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty
+            && trimmed != "."
+            && trimmed != ".."
+            && !trimmed.contains("/")
+            && !trimmed.contains("\\")
+            && !trimmed.contains(":")
+            && !trimmed.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
+    }
+}
+
 public enum TransferEnvelopeValidator {
     public static func validate(_ envelope: TransferEnvelope) throws {
         guard envelope.protocolVersion == BeamDropProtocol.protocolVersion else {
@@ -52,6 +65,17 @@ public enum TransferEnvelopeValidator {
         }
         if envelope.transferType == .file && metadata.sha256?.isEmpty != false {
             throw BeamDropError.missingRequiredField("payloadMetadata.sha256")
+        }
+        if envelope.transferType == .file && !FileNameValidator.isSafe(metadata.fileName) {
+            throw BeamDropError.invalidFileName
+        }
+        if let encryption = envelope.encryption {
+            guard encryption.scheme == BeamDropProtocol.sessionEncryptionScheme else {
+                throw BeamDropError.invalidEncryptionMetadata("Unsupported scheme \(encryption.scheme).")
+            }
+            guard encryption.ephemeralPublicKey.count == 64, Data(hexEncoded: encryption.ephemeralPublicKey) != nil else {
+                throw BeamDropError.invalidEncryptionMetadata("ephemeralPublicKey must be 64 hex characters.")
+            }
         }
     }
 }

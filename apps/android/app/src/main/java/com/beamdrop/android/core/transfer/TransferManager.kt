@@ -14,6 +14,8 @@ class TransferManager(
     private val approvalPrompt: ReceiveApprovalPrompt,
     private val localDeviceId: String = "android-local-device",
     private val localPublicKey: String = "",
+    private val encryptionPolicy: TransferEncryptionPolicy? = null,
+    private val logger: (String) -> Unit = {},
     private val clock: Clock = Clock.systemUTC(),
 ) {
     @Volatile
@@ -122,11 +124,21 @@ class TransferManager(
 
         val startedAt = clock.millis()
         return runCatching {
+            val session = encryptionPolicy?.outgoingSession(metadata, peer.publicKey)
+            if (session == null) {
+                logger("Legacy plaintext transfer ${metadata.transferId} to ${peer.deviceId}: session encryption unavailable.")
+            }
+            val sendMetadata = if (session == null) metadata else metadata.copy(encryption = session.encryption)
             source.openStream().use { input ->
-                transport.openSendStream(peer, metadata).use { rawOutput ->
-                    val output = ProgressOutputStream(rawOutput) { sent ->
-                        onProgress(progress(metadata, peer, TransferDirection.Sent, TransferStatus.Transferring, sent, startedAt))
-                    }
+                val rawOutput = transport.openSendStream(peer, sendMetadata)
+                val payloadOutput = if (session == null) {
+                    rawOutput
+                } else {
+                    SealedChunkOutputStream(rawOutput, session.cipher, metadata.chunkSizeBytes.toInt())
+                }
+                ProgressOutputStream(payloadOutput) { sent ->
+                    onProgress(progress(metadata, peer, TransferDirection.Sent, TransferStatus.Transferring, sent, startedAt))
+                }.use { output ->
                     copyChunked(metadata.transferId, input, output, metadata.chunkSizeBytes)
                 }
             }

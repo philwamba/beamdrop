@@ -25,10 +25,8 @@ All notable BeamDrop changes are tracked here.
 
 ### Release Status
 
-- Internal testing only. Do not ship as production until Android release build,
-  iOS archive/TestFlight, macOS notarization, Windows MSIX/installer packaging,
-  authenticated transfer encryption, and real-device cross-platform QA are
-  completed.
+- Private QA only. Do not ship as production until signed platform releases,
+  security signoff, and real-device cross-platform QA are complete.
 
 ## 0.1.0-internal.0 - 2026-07-06
 
@@ -43,14 +41,12 @@ All notable BeamDrop changes are tracked here.
 
 ### Security
 
-- Documented that public release remains blocked until authenticated encrypted transfer sessions are implemented and verified.
+- Documented that public release remains blocked until security release gates are complete.
 - Documented unknown-peer rejection, revoked-peer rejection, SHA-256 verification, and safe receive-file handling as release gates.
 
 ### Known Limitations
 
-- Current status is internal testing only, not public beta or production release.
-- Real-device Android-Windows MVP signoff is pending.
-- iOS requires Xcode project/workspace validation and complete foreground transfer wiring.
-- Windows requires a production DPAPI or Credential Locker storage provider and packaging path.
-- macOS requires signing, sandbox, notarization, and packaged-app validation.
+- Current status is private QA only, not public beta or production release.
+- Real-device cross-platform QA signoff is pending.
+- Platform signing, store packaging, and release validation are pending.
 - Generated Rust bindings are planned but not currently release dependencies.

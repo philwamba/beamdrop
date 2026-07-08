@@ -51,17 +51,27 @@ public final class BonjourDiscoveryService: LocalDiscoveryServicing {
 public final class LocalTransferListener {
     #if canImport(Network)
     private var listener: NWListener?
+    private let queue = DispatchQueue(label: "com.beamdrop.ios.transfer-listener")
     #endif
 
     public init() {}
 
-    public func start(port: Int = BeamDropProtocol.defaultPort) throws {
+    /// Starts the foreground TCP listener. Each inbound connection is wrapped in
+    /// a `TransferConnecting` and handed to `onConnection`; connections are
+    /// rejected outright when no handler is provided.
+    public func start(port: Int = BeamDropProtocol.defaultPort, onConnection: (@Sendable (any TransferConnecting) -> Void)? = nil) throws {
         #if canImport(Network)
         listener = try NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: UInt16(port))!)
+        let queue = self.queue
         listener?.newConnectionHandler = { connection in
-            connection.cancel()
+            guard let onConnection else {
+                connection.cancel()
+                return
+            }
+            connection.start(queue: queue)
+            onConnection(NWTransferConnection(connection: connection))
         }
-        listener?.start(queue: .main)
+        listener?.start(queue: queue)
         #endif
     }
 

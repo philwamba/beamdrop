@@ -78,7 +78,7 @@ platform-specific.
 - Small file: 512 KB random binary.
 - Large file: at least 128 MB random binary.
 - Corrupted file: copy of small file with one byte changed after manifest hash.
-- Unsafe names: `../secret.txt`, `..\\secret.txt`, `folder/name.txt`,
+- Unsafe names: `../blocked.txt`, `..\\blocked.txt`, `folder/name.txt`,
   `folder\\name.txt`, empty name, and control-character name.
 
 ## Execution Rules

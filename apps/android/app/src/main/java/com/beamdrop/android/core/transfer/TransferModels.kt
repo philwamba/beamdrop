@@ -53,6 +53,7 @@ data class TransferMetadata(
     val totalChunks: Long = ChunkCalculator.totalChunks(sizeBytes, chunkSizeBytes),
     val sha256: String? = null,
     val createdAtEpochMillis: Long,
+    val encryption: TransferEncryption? = null,
 )
 
 data class TransferProgress(

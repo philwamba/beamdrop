@@ -25,7 +25,7 @@ Do not publish public downloads until every blocking item is checked.
 - [ ] macOS SwiftPM build passes.
 - [ ] macOS signing, sandbox, notarization, and DMG/export path documented.
 - [ ] Windows active `apps/windows/src` build passes.
-- [ ] Windows DPAPI/Credential Locker provider implemented.
+- [ ] Windows platform secure storage provider implemented.
 - [ ] Windows MSIX/installer path documented.
 - [ ] Rust core tests pass or Rust marked foundation-only for MVP.
 - [ ] Server tests pass or server marked post-MVP.

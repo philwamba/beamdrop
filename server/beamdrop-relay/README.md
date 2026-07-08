@@ -12,7 +12,7 @@ paths are unavailable. The local MVP must work without this service.
 - Max encrypted file size enforcement.
 - Cleanup service for expired tokens/blobs.
 - Metadata-only relay records.
-- S3/R2-compatible storage adapter placeholder.
+- External object storage adapter placeholder.
 - Rate limiting structure through `@nestjs/throttler`.
 
 ## Security and Privacy

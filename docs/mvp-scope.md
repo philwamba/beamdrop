@@ -64,7 +64,7 @@ The MVP is not releasable unless these are manually verified:
 3. Pair/send/receive text and files with Android.
 4. Chunked transfer and SHA-256 verification work.
 5. Unknown/revoked peers are rejected.
-6. Secure storage uses DPAPI/Credential Locker.
+6. Secure storage uses platform-supported protected storage.
 7. Clipboard send is user-controlled and pausable.
 8. Firewall/network troubleshooting exists.
 9. MSIX/installer path is documented.

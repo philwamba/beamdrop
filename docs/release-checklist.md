@@ -132,8 +132,8 @@ Optional server release gates:
 
 - Build command: `scripts/build-windows.ps1`.
 - Test command: `dotnet run --project apps/windows/Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj`.
-- Signing requirement: MSIX or installer signing certificate, Windows App SDK
-  packaging configuration, and production Credential Locker/DPAPI provider.
+- Signing requirement: signed Windows package or installer, Windows App SDK
+  packaging configuration, and production platform secure storage provider.
 - Permission review: Windows Firewall/local network prompt copy,
   notification/tray behavior, file picker/save location, and clipboard policy.
 - Store policy risk: local listener and clipboard tray action must be disclosed;

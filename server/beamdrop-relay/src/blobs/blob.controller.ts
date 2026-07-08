@@ -8,7 +8,8 @@ import {
   Param,
   Post,
   RawBodyRequest,
-  Req
+  Req,
+  StreamableFile
 } from "@nestjs/common";
 import { Request } from "express";
 import { BlobStorage } from "./blob-storage";
@@ -60,6 +61,6 @@ export class BlobController {
     }
     record.status = "downloaded";
     this.records.upsert(record);
-    return blob.bytes;
+    return new StreamableFile(blob.bytes);
   }
 }

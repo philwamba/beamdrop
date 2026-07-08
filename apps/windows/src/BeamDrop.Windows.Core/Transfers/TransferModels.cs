@@ -14,7 +14,8 @@ public sealed record TransferManifest(
     long TotalChunks,
     string? Sha256,
     DateTimeOffset CreatedAt,
-    string? SenderPublicKey = null);
+    string? SenderPublicKey = null,
+    TransferEncryptionInfo? Encryption = null);
 
 public sealed record ChunkMetadata(long Index, long Offset, int SizeBytes);
 

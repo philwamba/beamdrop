@@ -13,6 +13,7 @@ public sealed class TransferManager
     private readonly AuditLog _auditLog;
     private readonly string _localDeviceId;
     private readonly string _localPublicKey;
+    private readonly SessionEncryptionService? _sessionEncryption;
 
     public TransferManager(
         TrustedPeerRepository trustedPeers,
@@ -21,7 +22,8 @@ public sealed class TransferManager
         IReceiveApprovalPrompt approvalPrompt,
         AuditLog auditLog,
         string localDeviceId = "windows-local-device",
-        string localPublicKey = "")
+        string localPublicKey = "",
+        SessionEncryptionService? sessionEncryption = null)
     {
         _trustedPeers = trustedPeers;
         _historyStore = historyStore;
@@ -30,6 +32,7 @@ public sealed class TransferManager
         _auditLog = auditLog;
         _localDeviceId = localDeviceId;
         _localPublicKey = localPublicKey;
+        _sessionEncryption = sessionEncryption;
     }
 
     public async Task<TransferHistoryRecord> SendTextAsync(string receiverDeviceId, string text, ITransferTransport transport, CancellationToken cancellationToken)

@@ -140,8 +140,8 @@ Optional relay requirements:
 - Expired blobs must be removed by cleanup.
 - Relay logs must not contain plaintext content, clipboard content, encryption
   keys, or decrypted metadata.
-- Relay tokens are bearer credentials and must be short-lived, random, and
-  scoped to the encrypted blob metadata they were issued for.
+- Relay tokens must be short-lived, random, and scoped to the encrypted blob
+  metadata they were issued for.
 
 Optional signaling requirements:
 

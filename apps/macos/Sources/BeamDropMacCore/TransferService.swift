@@ -47,6 +47,7 @@ public typealias ReceiveApprovalHandler = @Sendable (TransferEnvelope, TrustedPe
 
 public final class TransferService {
     private let identity: DeviceIdentity
+    private let sessionPrivateKey: Data?
     private let peerStore: TrustedPeerStore
     private let historyStore: TransferHistoryStore
     private let auditLog: AuditLog
@@ -56,18 +57,20 @@ public final class TransferService {
 
     public init(
         identity: DeviceIdentity,
+        sessionPrivateKey: Data? = nil,
         peerStore: TrustedPeerStore,
         historyStore: TransferHistoryStore,
         auditLog: AuditLog
     ) {
         self.identity = identity
+        self.sessionPrivateKey = sessionPrivateKey
         self.peerStore = peerStore
         self.historyStore = historyStore
         self.auditLog = auditLog
     }
 
     public func cancel(transferId: String) {
-        lock.withLock { cancelledTransferIds.insert(transferId) }
+        _ = lock.withLock { cancelledTransferIds.insert(transferId) }
     }
 
     public func sendText(_ text: String, to peer: TrustedPeer, progress: TransferProgressHandler? = nil) throws {
@@ -136,6 +139,8 @@ public final class TransferService {
 
     private func send(data: Data, envelope: TransferEnvelope, to peer: TrustedPeer, progress: TransferProgressHandler?) throws {
         try requireSendAllowed(peer)
+        var envelope = envelope
+        let session = try initiateSession(for: &envelope, peer: peer)
         try record(envelope: envelope, peer: peer, direction: .sent, status: .queued)
         let endpoint = try endpoint(for: peer)
         let connection = try connect(to: endpoint)
@@ -143,12 +148,21 @@ public final class TransferService {
 
         let header = try TransferEnvelopeCodec.encode(envelope) + "\n"
         try sendData(Data(header.utf8), on: connection)
-        try sendData(data, on: connection)
+        if let session {
+            for chunk in ChunkCalculator.chunks(sizeBytes: envelope.payloadMetadata.sizeBytes, chunkSize: envelope.payloadMetadata.chunkSize) {
+                let plaintext = data.subdata(in: Int(chunk.offset)..<Int(chunk.offset + chunk.length))
+                try sendData(session.sealChunk(plaintext, index: chunk.index), on: connection)
+            }
+        } else {
+            try sendData(data, on: connection)
+        }
         try finishSend(envelope: envelope, peer: peer, bytes: Int64(data.count), progress: progress)
     }
 
     private func send(fileURL: URL, envelope: TransferEnvelope, to peer: TrustedPeer, progress: TransferProgressHandler?) throws {
         try requireSendAllowed(peer)
+        var envelope = envelope
+        let session = try initiateSession(for: &envelope, peer: peer)
         try record(envelope: envelope, peer: peer, direction: .sent, status: .queued)
         let endpoint = try endpoint(for: peer)
         let connection = try connect(to: endpoint)
@@ -162,18 +176,34 @@ public final class TransferService {
 
         let startedAt = Date()
         var sent: Int64 = 0
-        for chunk in ChunkCalculator.chunks(sizeBytes: envelope.payloadMetadata.sizeBytes) {
+        for chunk in ChunkCalculator.chunks(sizeBytes: envelope.payloadMetadata.sizeBytes, chunkSize: envelope.payloadMetadata.chunkSize) {
             if isCancelled(envelope.transferId) {
                 try record(envelope: envelope, peer: peer, direction: .sent, status: .cancelled, error: BeamDropError.cancelled.localizedDescription)
                 throw BeamDropError.cancelled
             }
             try handle.seek(toOffset: UInt64(chunk.offset))
             let data = try handle.read(upToCount: Int(chunk.length)) ?? Data()
-            try sendData(data, on: connection)
+            try sendData(session.map { try $0.sealChunk(data, index: chunk.index) } ?? data, on: connection)
             sent += Int64(data.count)
             progress?(makeProgress(envelope: envelope, peer: peer, status: .transferring, bytes: sent, startedAt: startedAt))
         }
         try finishSend(envelope: envelope, peer: peer, bytes: sent, progress: progress)
+    }
+
+    private func initiateSession(for envelope: inout TransferEnvelope, peer: TrustedPeer) throws -> SessionCrypto? {
+        guard let sessionPrivateKey, let receiverStaticPublic = try? X25519PublicKeyCodec.rawKey(spkiBase64: peer.publicKey) else {
+            try? auditLog.record(type: "legacy_plaintext_send", message: "Sending transfer \(envelope.transferId) to \(peer.deviceName) without session encryption.")
+            return nil
+        }
+        let session = try SessionCrypto.initiate(
+            senderStaticSecret: sessionPrivateKey,
+            receiverStaticPublic: receiverStaticPublic,
+            senderDeviceId: identity.deviceId,
+            receiverDeviceId: peer.deviceId,
+            transferId: envelope.transferId
+        )
+        envelope.encryption = TransferEncryption(ephemeralPublicKey: session.ephemeralPublicKey.hexEncodedString)
+        return session
     }
 
     private func finishSend(envelope: TransferEnvelope, peer: TrustedPeer, bytes: Int64, progress: TransferProgressHandler?) throws {

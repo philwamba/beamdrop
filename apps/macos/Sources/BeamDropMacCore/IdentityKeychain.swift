@@ -110,13 +110,22 @@ public final class DeviceIdentityService {
     }
 
     public func getOrCreateIdentity(deviceName: String = Host.current().localizedName ?? "Mac") throws -> DeviceIdentity {
+        try getOrCreateStoredIdentity(deviceName: deviceName).identity
+    }
+
+    public func getOrCreateSessionPrivateKey(deviceName: String = Host.current().localizedName ?? "Mac") throws -> Data {
+        try getOrCreateStoredIdentity(deviceName: deviceName).privateKeyRawRepresentation
+    }
+
+    private func getOrCreateStoredIdentity(deviceName: String) throws -> StoredIdentity {
         if let data = try secretStore.read(service: serviceName, account: accountName),
-           let stored = try? BeamDropJSON.decoder.decode(StoredIdentity.self, from: data) {
-            return stored.identity
+           let stored = try? BeamDropJSON.decoder.decode(StoredIdentity.self, from: data),
+           (try? X25519PublicKeyCodec.rawKey(spkiBase64: stored.identity.publicKey)) != nil {
+            return stored
         }
 
-        let privateKey = P256.Signing.PrivateKey()
-        let publicKey = Data(privateKey.publicKey.x963Representation).base64EncodedString()
+        let privateKey = Curve25519.KeyAgreement.PrivateKey()
+        let publicKey = try X25519PublicKeyCodec.spkiBase64(rawKey: privateKey.publicKey.rawRepresentation)
         let fingerprint = PeerFingerprint.fingerprint(publicKey: publicKey)
         let identity = DeviceIdentity(
             deviceId: "macos-\(UUID().uuidString.lowercased())",
@@ -127,7 +136,7 @@ public final class DeviceIdentityService {
         let stored = StoredIdentity(identity: identity, privateKeyRawRepresentation: privateKey.rawRepresentation)
         let data = try BeamDropJSON.encoder.encode(stored)
         try secretStore.write(data, service: serviceName, account: accountName)
-        return identity
+        return stored
     }
 }
 

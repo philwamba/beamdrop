@@ -99,11 +99,10 @@ Current optional server scaffolds:
 - `server/beamdrop-signaling`: NestJS WebSocket gateway for device presence,
   pairing signaling placeholders, transfer signaling placeholders, rate limiting
   structure, logging, and `GET /health`.
-- `server/beamdrop-relay`: NestJS HTTP service for expiring transfer tokens and
-  temporary encrypted blob upload/download. The relay stores metadata-only
-  records and opaque encrypted bytes in future S3/R2-compatible storage.
-- `server/docker-compose.yml`: local PostgreSQL, Redis, MinIO, signaling, and
-  relay wiring for future integration work.
+- `server/beamdrop-relay`: optional HTTP service for expiring transfer tokens
+  and temporary encrypted blob upload/download.
+- `server/docker-compose.yml`: optional local service composition for
+  development.
 
 Relay storage rules:
 
@@ -130,7 +129,7 @@ Device private keys must be stored in platform secure storage where available:
 - Android Keystore.
 - iOS Keychain / Secure Enclave where appropriate.
 - macOS Keychain.
-- Windows Credential Locker, DPAPI, or platform-supported secure storage.
+- Windows platform-supported secure storage.
 
 ## Transfer Pipeline
 

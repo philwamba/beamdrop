@@ -13,7 +13,7 @@ object TransferEnvelopeCodec {
             .put("totalChunks", metadata.totalChunks)
             .put("sha256", metadata.sha256)
 
-        return JSONObject()
+        val envelope = JSONObject()
             .put("protocolVersion", "1.0")
             .put("transferId", metadata.transferId)
             .put("transferType", metadata.type.name)
@@ -22,7 +22,15 @@ object TransferEnvelopeCodec {
             .put("receiverDeviceId", metadata.receiverDeviceId)
             .put("createdAt", Instant.ofEpochMilli(metadata.createdAtEpochMillis).toString())
             .put("payloadMetadata", payloadMetadata)
-            .toString()
+        metadata.encryption?.let { encryption ->
+            envelope.put(
+                "encryption",
+                JSONObject()
+                    .put("scheme", encryption.scheme)
+                    .put("ephemeralPublicKey", encryption.ephemeralPublicKey),
+            )
+        }
+        return envelope.toString()
     }
 
     fun decode(rawJson: String): TransferMetadata {
@@ -37,6 +45,13 @@ object TransferEnvelopeCodec {
         require(sha256 != null && sha256.matches(Regex("^[a-fA-F0-9]{64}$"))) { "Transfer is missing a valid final SHA-256." }
         val totalChunks = payload.optLong("totalChunks", ChunkCalculator.totalChunks(sizeBytes, chunkSize))
         require(totalChunks == ChunkCalculator.totalChunks(sizeBytes, chunkSize)) { "Transfer chunk metadata does not match payload size." }
+        val encryption = json.optJSONObject("encryption")?.let { block ->
+            val scheme = block.getString("scheme")
+            val ephemeralPublicKey = block.getString("ephemeralPublicKey")
+            require(scheme == SESSION_ENCRYPTION_SCHEME_V1) { "Unsupported transfer encryption scheme." }
+            require(ephemeralPublicKey.matches(Regex("^[a-fA-F0-9]{64}$"))) { "Transfer encryption ephemeral key is invalid." }
+            TransferEncryption(scheme = scheme, ephemeralPublicKey = ephemeralPublicKey)
+        }
         return TransferMetadata(
             transferId = json.getString("transferId"),
             type = AndroidTransferType.valueOf(json.getString("transferType")),
@@ -50,6 +65,7 @@ object TransferEnvelopeCodec {
             totalChunks = totalChunks,
             sha256 = sha256,
             createdAtEpochMillis = Instant.parse(json.getString("createdAt")).toEpochMilli(),
+            encryption = encryption,
         )
     }
 }

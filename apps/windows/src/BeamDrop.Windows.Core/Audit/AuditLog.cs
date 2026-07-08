@@ -11,6 +11,7 @@ public enum AuditEventType
     TransferRejected,
     TransferCompleted,
     TransferFailed,
+    LegacyPlaintextTransfer,
     ClipboardSendBlocked,
     ClipboardSendPaused
 }

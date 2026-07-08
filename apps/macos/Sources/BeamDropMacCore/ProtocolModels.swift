@@ -183,6 +183,16 @@ public struct PayloadMetadata: Codable, Equatable, Sendable {
     }
 }
 
+public struct TransferEncryption: Codable, Equatable, Sendable {
+    public var scheme: String
+    public var ephemeralPublicKey: String
+
+    public init(scheme: String = BeamDropProtocol.sessionEncryptionScheme, ephemeralPublicKey: String) {
+        self.scheme = scheme
+        self.ephemeralPublicKey = ephemeralPublicKey
+    }
+}
+
 public struct TransferEnvelope: Codable, Equatable, Sendable {
     public var protocolVersion: String
     public var transferId: String
@@ -191,6 +201,7 @@ public struct TransferEnvelope: Codable, Equatable, Sendable {
     public var senderPublicKey: String
     public var receiverDeviceId: String
     public var createdAt: String
+    public var encryption: TransferEncryption?
     public var payloadMetadata: PayloadMetadata
 
     public init(
@@ -201,6 +212,7 @@ public struct TransferEnvelope: Codable, Equatable, Sendable {
         senderPublicKey: String,
         receiverDeviceId: String,
         createdAt: String = ISO8601DateFormatter.beamDrop.string(from: Date()),
+        encryption: TransferEncryption? = nil,
         payloadMetadata: PayloadMetadata
     ) {
         self.protocolVersion = protocolVersion
@@ -210,6 +222,7 @@ public struct TransferEnvelope: Codable, Equatable, Sendable {
         self.senderPublicKey = senderPublicKey
         self.receiverDeviceId = receiverDeviceId
         self.createdAt = createdAt
+        self.encryption = encryption
         self.payloadMetadata = payloadMetadata
     }
 }

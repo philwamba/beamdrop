@@ -202,8 +202,8 @@ Submission notes should explain:
 
 - Build command: `scripts/build-windows.ps1`.
 - Test command: `dotnet run --project apps/windows/Tests/BeamDrop.Windows.Tests/BeamDrop.Windows.Tests.csproj`.
-- Signing requirement: signed MSIX or installer, trusted publisher certificate,
-  Windows App SDK packaging, and production Credential Locker/DPAPI integration.
+- Signing requirement: signed Windows package or installer, trusted publisher
+  certificate, Windows App SDK packaging, and production platform secure storage.
 - Permission review: firewall/local network diagnostics, notifications/tray
   behavior, file picker/save behavior, and clipboard opt-in/pause controls.
 - Store policy risk: clipboard automation and local listener behavior must be
