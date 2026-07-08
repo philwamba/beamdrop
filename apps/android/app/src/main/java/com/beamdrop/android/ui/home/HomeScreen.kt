@@ -30,9 +30,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,14 +42,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.beamdrop.android.R
 import com.beamdrop.android.core.pairing.DeviceIdentity
+import com.beamdrop.android.core.pairing.Fingerprint
 import com.beamdrop.android.core.pairing.TrustState
 import com.beamdrop.android.core.pairing.TrustedPeer
 import com.beamdrop.android.core.transfer.TransferHistoryRecord
-import com.beamdrop.android.navigation.BeamDropDestination
-import com.beamdrop.android.ui.components.BeamDropBottomBar
 import com.beamdrop.android.ui.components.EmptyDevices
 import com.beamdrop.android.ui.components.HistoryRow
 import com.beamdrop.android.ui.components.PeerRow
@@ -78,23 +78,17 @@ internal fun HomeScreen(
 ) {
     var name by remember(identity.displayName) { mutableStateOf(identity.displayName) }
     val trustedCount = peers.count { it.trustState == TrustState.Trusted }
+    val identityCode = remember(identity.publicKey) {
+        Fingerprint.fromPublicKey(identity.publicKey)
+            .split(":")
+            .take(2)
+            .joinToString(" ")
+    }
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("BeamDrop") },
-                actions = {
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Outlined.Security, contentDescription = "Settings")
-                    }
-                },
-            )
-        },
         bottomBar = {
-            BeamDropBottomBar(
-                current = BeamDropDestination.Home,
-                onHome = {},
-                onDevices = onDevices,
-                onHistory = onHistory,
+            HomeActionDock(
+                onReceive = onPair,
+                onSend = onSendText,
                 onSettings = onSettings,
             )
         },
@@ -105,24 +99,127 @@ internal fun HomeScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                SectionSurface {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillParentMaxHeight(0.82f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = onHistory) {
+                            Icon(Icons.Outlined.History, contentDescription = "Transfer history")
+                        }
+                        IconButton(onClick = onAbout) {
+                            Icon(Icons.Outlined.Security, contentDescription = "About BeamDrop")
+                        }
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    Surface(
+                        shape = MaterialTheme.shapes.extraLarge,
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp,
+                        shadowElevation = 0.dp,
+                    ) {
                         Image(
                             painter = painterResource(id = R.drawable.beamdrop_logo),
                             contentDescription = "BeamDrop logo",
-                            modifier = Modifier.size(44.dp),
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .size(116.dp),
                         )
-                        Column {
-                            Text("Ready to send", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                if (trustedCount == 0) "Pair a device to start" else "$trustedCount trusted ${if (trustedCount == 1) "device" else "devices"}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    }
+
+                    Spacer(Modifier.height(28.dp))
+                    Text(
+                        identity.displayName,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        "#$identityCode",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        if (trustedCount == 0) {
+                            "No trusted devices yet"
+                        } else {
+                            "$trustedCount trusted ${if (trustedCount == 1) "device" else "devices"}"
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            item {
+                SectionSurface {
+                    Text("Send", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Choose what to send to a trusted device.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = onSendText, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("Text")
+                        }
+                        OutlinedButton(onClick = onSendFile, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Outlined.AttachFile, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("File")
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = onSendClipboard, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Outlined.ContentPaste, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Paste clipboard text")
+                    }
+                }
+            }
+
+            item {
+                SectionSurface {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(Icons.Outlined.Devices, contentDescription = null)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Receive and pair", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Show your QR or scan another device.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    if (peers.none { it.trustState == TrustState.Trusted }) {
+                        EmptyDevices(onPair, onScan)
+                    } else {
+                        peers.filter { it.trustState == TrustState.Trusted }.take(3).forEach { PeerRow(it) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = onDevices) { Text("Manage devices") }
+                            TextButton(onClick = onScan) { Text("Scan QR") }
+                        }
+                    }
+                }
+            }
+
+            item {
+                SectionSurface {
+                    Text("This phone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Rename this device so it is easy to recognize while pairing.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = name,
@@ -136,39 +233,9 @@ internal fun HomeScreen(
                         AssistChip(onClick = {}, label = { Text("This phone") })
                         AssistChip(onClick = {}, label = { Text("No account needed") })
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(12.dp))
                     Button(onClick = { onNameSaved(name) }) {
                         Text("Save name")
-                    }
-                }
-            }
-
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    Button(onClick = onSendText, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Text")
-                    }
-                    OutlinedButton(onClick = onSendFile, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Outlined.AttachFile, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("File")
-                    }
-                }
-            }
-
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(onClick = onSendClipboard, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Outlined.ContentPaste, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Paste")
-                    }
-                    OutlinedButton(onClick = onHistory, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Outlined.History, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Activity")
                     }
                 }
             }
@@ -183,56 +250,16 @@ internal fun HomeScreen(
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    Button(onClick = onPair, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Outlined.QrCode, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Show my QR")
-                    }
-                    OutlinedButton(onClick = onScan, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Outlined.QrCodeScanner, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Scan QR")
-                    }
-                }
-            }
-
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(onClick = onNearby, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.Devices, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
                         Text("Nearby")
                     }
-                    OutlinedButton(onClick = onSettings, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(onClick = onPermissions, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.Security, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Settings")
+                        Text("Help")
                     }
-                }
-            }
-
-            item {
-                SectionSurface {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Devices, contentDescription = null)
-                        Spacer(Modifier.size(10.dp))
-                        Text("Your devices", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    if (peers.none { it.trustState == TrustState.Trusted }) {
-                        EmptyDevices(onPair, onScan)
-                    } else {
-                        peers.filter { it.trustState == TrustState.Trusted }.take(3).forEach { PeerRow(it) }
-                        TextButton(onClick = onDevices) { Text("Manage trusted devices") }
-                    }
-                }
-            }
-
-            item {
-                OutlinedButton(onClick = onPermissions, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Security, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Permissions and connection help")
                 }
             }
 
@@ -256,6 +283,72 @@ internal fun HomeScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeActionDock(
+    onReceive: () -> Unit,
+    onSend: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HomeDockItem(
+                selected = true,
+                icon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
+                label = "Receive",
+                onClick = onReceive,
+            )
+            HomeDockItem(
+                selected = false,
+                icon = { Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null) },
+                label = "Send",
+                onClick = onSend,
+            )
+            HomeDockItem(
+                selected = false,
+                icon = { Icon(Icons.Outlined.Security, contentDescription = null) },
+                label = "Settings",
+                onClick = onSettings,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeDockItem(
+    selected: Boolean,
+    icon: @Composable () -> Unit,
+    label: String,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(
+                color = if (selected) {
+                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f)
+                },
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Row(modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) {
+                    icon()
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
