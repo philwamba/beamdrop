@@ -59,8 +59,10 @@ git push origin "v$VERSION"
 The workflow also supports manual dispatch with an existing tag. It verifies the
 tag before publishing so a mistyped release cannot silently create a new tag.
 
-The workflow creates a draft prerelease by default. If the release already
-exists, it uploads the rebuilt assets with `--clobber`.
+Tag pushes create a visible prerelease by default. Manual dispatch can still
+create or update a draft release when the `draft` input is enabled. If the
+release already exists, the workflow uploads the rebuilt assets with
+`--clobber`.
 
 ## Required GitHub Permissions
 
@@ -82,4 +84,4 @@ Other jobs use repository read access.
 - Verify the APK installs on physical Android devices.
 - Verify the DMG opens on a clean macOS machine without Gatekeeper warnings.
 - Confirm checksums match downloaded GitHub Release assets.
-- Keep the release as a draft until manual QA and signing checks are complete.
+- Use manual draft mode only when a release must remain hidden during QA.

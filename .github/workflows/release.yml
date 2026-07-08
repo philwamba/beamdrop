@@ -10,7 +10,7 @@ on:
         description: Create or update a draft release
         required: true
         type: boolean
-        default: true
+        default: false
       prerelease:
         description: Mark release as a prerelease
         required: true
@@ -92,7 +92,7 @@ jobs:
             dist/release/BeamDrop-macOS-*.dmg.sha256
 
   publish:
-    name: Publish Draft GitHub Release
+    name: Publish GitHub Prerelease
     needs:
       - android
       - macos
@@ -129,14 +129,14 @@ jobs:
             find dist/release -maxdepth 1 -type f -print | sort | sed 's#dist/release/#- #'
             echo
             echo "Security and distribution notes:"
-            echo "- Android APK is currently unsigned unless release signing is configured in Gradle outside the repository."
+            echo "- Android APK is release-signed only when the required GitHub signing secrets are configured."
             echo "- macOS DMG signs the executable only and is not notarized; use it for internal testing until a production app-bundle export path is configured."
             echo "- Checksums are attached for every packaged artifact."
           } > RELEASE_NOTES.md
 
       - name: Create or update GitHub Release
         run: |
-          RELEASE_DRAFT="${RELEASE_DRAFT:-true}"
+          RELEASE_DRAFT="${RELEASE_DRAFT:-false}"
           RELEASE_PRERELEASE="${RELEASE_PRERELEASE:-true}"
 
           mapfile -t ASSETS < <(find dist/release -maxdepth 1 -type f | sort)

@@ -21,8 +21,8 @@ network transfer.
 - macOS DMG artifact command: `scripts/build-macos-dmg.sh`.
 - GitHub workflow: `.github/workflows/release.yml`.
 - Release tag format: `v<VERSION>`, for example `v0.1.0-internal.2`.
-- Release publication mode: draft prerelease until production signing,
-  notarization, and manual QA are complete.
+- Release publication mode: visible GitHub prerelease for internal testers;
+  manual draft mode is only for hidden QA builds.
 - Artifact integrity: attach SHA-256 sidecar files with every APK and DMG.
 - Token scope: GitHub Actions release publishing must use least privilege; only
   the publish job should request `contents: write`.
