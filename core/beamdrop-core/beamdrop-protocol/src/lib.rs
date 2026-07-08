@@ -444,6 +444,11 @@ mod tests {
             created_at: "2026-07-06T14:27:18Z".to_owned(),
             requires_approval: true,
             resume_supported: true,
+            encryption: Some(EncryptionParameters {
+                scheme: ENCRYPTION_SCHEME_SESSION_V1.to_owned(),
+                ephemeral_public_key:
+                    "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b".to_owned(),
+            }),
             payload_metadata: PayloadMetadata {
                 file_name: Some("BeamDrop-Q3-demo.mov".to_owned()),
                 mime_type: Some("video/quicktime".to_owned()),
@@ -460,6 +465,27 @@ mod tests {
         };
 
         assert!(envelope.validate().is_ok());
+
+        let mut bad_scheme = envelope.clone();
+        bad_scheme.encryption = Some(EncryptionParameters {
+            scheme: "ROT13".to_owned(),
+            ephemeral_public_key:
+                "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b".to_owned(),
+        });
+        assert_eq!(
+            bad_scheme.validate(),
+            Err(ProtocolError::UnsupportedEncryptionScheme("ROT13".to_owned()))
+        );
+
+        let mut bad_key = envelope;
+        bad_key.encryption = Some(EncryptionParameters {
+            scheme: ENCRYPTION_SCHEME_SESSION_V1.to_owned(),
+            ephemeral_public_key: "not-hex".to_owned(),
+        });
+        assert_eq!(
+            bad_key.validate(),
+            Err(ProtocolError::InvalidEphemeralPublicKey)
+        );
     }
 
     #[test]
@@ -474,6 +500,7 @@ mod tests {
             created_at: "2026-07-06T14:27:18Z".to_owned(),
             requires_approval: true,
             resume_supported: true,
+            encryption: None,
             payload_metadata: PayloadMetadata {
                 file_name: Some("BeamDrop-Q3-demo.mov".to_owned()),
                 mime_type: Some("video/quicktime".to_owned()),
@@ -502,6 +529,7 @@ mod tests {
             created_at: "2026-07-06T14:27:18Z".to_owned(),
             requires_approval: true,
             resume_supported: true,
+            encryption: None,
             payload_metadata: PayloadMetadata {
                 file_name: Some("../secret.txt".to_owned()),
                 mime_type: Some("text/plain".to_owned()),
