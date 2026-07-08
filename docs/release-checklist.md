@@ -15,6 +15,23 @@ Every release must state which platforms are included:
 The MVP release must not depend on remote relay or cloud upload for local
 network transfer.
 
+## GitHub Release Artifacts
+
+- Android APK artifact command: `scripts/build-android-apk.sh`.
+- macOS DMG artifact command: `scripts/build-macos-dmg.sh`.
+- GitHub workflow: `.github/workflows/release.yml`.
+- Release tag format: `v<VERSION>`, for example `v0.1.0-internal.2`.
+- Release publication mode: draft prerelease until production signing,
+  notarization, and manual QA are complete.
+- Artifact integrity: attach SHA-256 sidecar files with every APK and DMG.
+- Token scope: GitHub Actions release publishing must use least privilege; only
+  the publish job should request `contents: write`.
+- Safety gate: the workflow must verify an existing tag before creating or
+  updating a GitHub Release.
+- Internal limitation: current Android artifacts are unsigned unless external
+  release signing is configured; current macOS DMG artifacts use a SwiftPM
+  wrapper that signs the executable only and is not notarization-ready.
+
 ## Product Readiness
 
 - BeamDrop name and app icons are final for the release.
@@ -73,6 +90,7 @@ Optional server release gates:
 ### Android Release Checklist
 
 - Build command: `scripts/build-android.sh`.
+- APK artifact command: `scripts/build-android-apk.sh`.
 - Test command: `gradle --no-daemon --max-workers=1 testDebugUnitTest`.
 - Signing requirement: Play App Signing or release keystore configured outside
   the repo; no debug signing for release artifacts.
@@ -114,6 +132,7 @@ Optional server release gates:
 ### macOS Release Checklist
 
 - Build command: `scripts/build-macos.sh`.
+- DMG artifact command: `scripts/build-macos-dmg.sh`.
 - Test command: `swift test` in `apps/macos/`.
 - Signing requirement: Developer ID Application certificate, hardened runtime,
   notarization, stapling, and sandbox/entitlement review if distributed through
@@ -126,7 +145,9 @@ Optional server release gates:
   receive prompt, large file cancellation/resume where supported, reveal in
   Finder, firewall/blocked Bonjour diagnostics, revoked peer rejection.
 - Known limitations: package/notarization path and final entitlements are not
-  proven; current script validates Swift package build/tests only.
+  proven for public distribution; `scripts/build-macos-dmg.sh` creates an
+  internal DMG from the SwiftPM executable and does not produce a notarization-
+  ready app bundle.
 
 ### Windows Release Checklist
 

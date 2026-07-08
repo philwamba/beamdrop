@@ -1,0 +1,141 @@
+name: Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish, for example v0.1.0-internal.2
+        required: true
+      draft:
+        description: Create or update a draft release
+        required: true
+        type: boolean
+        default: true
+      prerelease:
+        description: Mark release as a prerelease
+        required: true
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Build APK artifact
+        run: scripts/build-android-apk.sh
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beamdrop-android
+          path: |
+            dist/release/BeamDrop-Android-*.apk
+            dist/release/BeamDrop-Android-*.apk.sha256
+
+  macos:
+    name: Build macOS DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build DMG artifact
+        run: scripts/build-macos-dmg.sh
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beamdrop-macos
+          path: |
+            dist/release/BeamDrop-macOS-*.dmg
+            dist/release/BeamDrop-macOS-*.dmg.sha256
+
+  publish:
+    name: Publish Draft GitHub Release
+    needs:
+      - android
+      - macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      RELEASE_DRAFT: ${{ inputs.draft }}
+      RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/release
+          merge-multiple: true
+
+      - name: Verify release tag exists
+        run: git rev-parse --verify "refs/tags/$RELEASE_TAG"
+
+      - name: Write release notes
+        run: |
+          {
+            echo "BeamDrop $RELEASE_TAG internal release artifacts."
+            echo
+            echo "Artifacts:"
+            find dist/release -maxdepth 1 -type f -print | sort | sed 's#dist/release/#- #'
+            echo
+            echo "Security and distribution notes:"
+            echo "- Android APK is currently unsigned unless release signing is configured in Gradle outside the repository."
+            echo "- macOS DMG signs the executable only and is not notarized; use it for internal testing until a production app-bundle export path is configured."
+            echo "- Checksums are attached for every packaged artifact."
+          } > RELEASE_NOTES.md
+
+      - name: Create or update GitHub Release
+        run: |
+          RELEASE_DRAFT="${RELEASE_DRAFT:-true}"
+          RELEASE_PRERELEASE="${RELEASE_PRERELEASE:-true}"
+
+          mapfile -t ASSETS < <(find dist/release -maxdepth 1 -type f | sort)
+          if [[ "${#ASSETS[@]}" -eq 0 ]]; then
+            echo "No release assets found." >&2
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber
+          else
+            FLAGS=(--verify-tag --title "BeamDrop $RELEASE_TAG" --notes-file RELEASE_NOTES.md)
+            if [[ "$RELEASE_DRAFT" == "true" ]]; then
+              FLAGS+=(--draft)
+            fi
+            if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+              FLAGS+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" "${ASSETS[@]}" "${FLAGS[@]}"
+          fi

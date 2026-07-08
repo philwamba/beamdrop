@@ -85,5 +85,6 @@ pnpm-debug.log*
 
 # Generated artifacts
 artifacts/
+dist/
 tmp/
 temp/
