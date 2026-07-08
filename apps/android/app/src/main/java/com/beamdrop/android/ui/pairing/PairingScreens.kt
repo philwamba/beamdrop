@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
@@ -92,7 +93,11 @@ internal fun PairNewDeviceScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Pair new device") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Close") } },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Close")
+                    }
+                },
                 actions = {
                     IconButton(onClick = onRefresh) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refresh QR")
@@ -203,7 +208,11 @@ internal fun ScanQrScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Scan QR code") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Close") } },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Close")
+                    }
+                },
             )
         },
     ) { padding ->

@@ -1,5 +1,6 @@
 package com.beamdrop.android.ui.home
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,9 +18,10 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,9 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.beamdrop.android.R
 import com.beamdrop.android.core.pairing.DeviceIdentity
@@ -76,13 +80,58 @@ internal fun HomeScreen(
     onOnboarding: () -> Unit,
     onNameSaved: (String) -> Unit,
 ) {
-    var name by remember(identity.displayName) { mutableStateOf(identity.displayName) }
+    val context = LocalContext.current
+    var renameDialogOpen by remember { mutableStateOf(false) }
+    var draftName by remember(identity.displayName) { mutableStateOf(identity.displayName) }
     val trustedCount = peers.count { it.trustState == TrustState.Trusted }
     val identityCode = remember(identity.publicKey) {
         Fingerprint.fromPublicKey(identity.publicKey)
             .split(":")
             .take(2)
             .joinToString(" ")
+    }
+    if (renameDialogOpen) {
+        AlertDialog(
+            onDismissRequest = {
+                renameDialogOpen = false
+                draftName = identity.displayName
+            },
+            title = { Text("Rename this phone") },
+            text = {
+                OutlinedTextField(
+                    value = draftName,
+                    onValueChange = { draftName = it },
+                    label = { Text("Device name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmedName = draftName.trim()
+                        if (trimmedName.isNotEmpty()) {
+                            onNameSaved(trimmedName)
+                            renameDialogOpen = false
+                            Toast.makeText(context, "Device renamed", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    enabled = draftName.isNotBlank(),
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        renameDialogOpen = false
+                        draftName = identity.displayName
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
     Scaffold(
         bottomBar = {
@@ -141,12 +190,29 @@ internal fun HomeScreen(
                     }
 
                     Spacer(Modifier.height(28.dp))
-                    Text(
-                        identity.displayName,
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            identity.displayName,
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        IconButton(
+                            onClick = {
+                                draftName = identity.displayName
+                                renameDialogOpen = true
+                            },
+                        ) {
+                            Icon(Icons.Outlined.Edit, contentDescription = "Rename this phone")
+                        }
+                    }
                     Text(
                         "#$identityCode",
                         style = MaterialTheme.typography.headlineSmall,
@@ -221,23 +287,17 @@ internal fun HomeScreen(
             item {
                 SectionSurface {
                     Text("This phone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("Rename this device so it is easy to recognize while pairing.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("This is the name other devices see while pairing.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Device name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("This phone") })
-                        AssistChip(onClick = {}, label = { Text("No account needed") })
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = { onNameSaved(name) }) {
-                        Text("Save name")
+                    OutlinedButton(
+                        onClick = {
+                            draftName = identity.displayName
+                            renameDialogOpen = true
+                        },
+                    ) {
+                        Icon(Icons.Outlined.Edit, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Rename phone")
                     }
                 }
             }
