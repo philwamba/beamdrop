@@ -164,7 +164,7 @@ internal fun PairNewDeviceScreen(
 internal fun ScanQrScreen(
     controller: ScanQrController,
     onBack: () -> Unit,
-    onTrusted: () -> Unit,
+    onTrusted: (com.beamdrop.android.core.pairing.TrustedPeer) -> Unit,
 ) {
     var state by remember { mutableStateOf(controller.state) }
     var rawQr by remember { mutableStateOf("") }
@@ -198,7 +198,7 @@ internal fun ScanQrScreen(
             request = (state as ScanQrUiState.PendingApproval).request,
             onApprove = {
                 state = controller.approveCurrentRequest()
-                if (state is ScanQrUiState.Trusted) onTrusted()
+                (state as? ScanQrUiState.Trusted)?.let { onTrusted(it.peer) }
             },
             onReject = { state = controller.rejectCurrentRequest() },
         )

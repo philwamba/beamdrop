@@ -46,7 +46,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -73,6 +74,8 @@ android {
     packaging {
         resources {
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            excludes += "org/bouncycastle/pqc/crypto/picnic/*.bin.properties"
+            excludes += "org/bouncycastle/x509/CertPathReviewerMessages*.properties"
         }
     }
 }

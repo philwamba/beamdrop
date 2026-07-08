@@ -20,6 +20,7 @@ final class AppState: ObservableObject {
     @Published var selectedPeer: TrustedPeer?
     @Published var activeProgress: TransferProgress?
     @Published var pendingReceive: PendingReceiveRequest?
+    @Published var pendingPairing: PendingPairingRequest?
     @Published var lastError: String?
     @Published var isReceiving = false
     @Published var launchAtLogin = false
@@ -245,6 +246,28 @@ final class AppState: ObservableObject {
             _ = semaphore.wait(timeout: .now() + 120)
             Task { @MainActor in self.pendingReceive = nil }
             return approved
+        } approvePairing: { [weak self] payload in
+            guard let self else { return false }
+            let semaphore = DispatchSemaphore(value: 0)
+            var approved = false
+            Task { @MainActor in
+                self.pendingPairing = PendingPairingRequest(
+                    deviceName: payload.deviceName,
+                    platform: payload.platform.rawValue,
+                    fingerprint: payload.fingerprint ?? String(payload.publicKey.prefix(16)),
+                    accept: {
+                        approved = true
+                        semaphore.signal()
+                    },
+                    reject: {
+                        approved = false
+                        semaphore.signal()
+                    }
+                )
+            }
+            _ = semaphore.wait(timeout: .now() + 120)
+            Task { @MainActor in self.pendingPairing = nil }
+            return approved
         } progress: { progress in
             Task { @MainActor in self.activeProgress = progress }
         } completion: { [weak self] result in
@@ -263,6 +286,15 @@ struct PendingReceiveRequest: Identifiable {
     let senderName: String
     let fileName: String
     let sizeBytes: Int64
+    let accept: () -> Void
+    let reject: () -> Void
+}
+
+struct PendingPairingRequest: Identifiable {
+    let id = UUID()
+    let deviceName: String
+    let platform: String
+    let fingerprint: String
     let accept: () -> Void
     let reject: () -> Void
 }

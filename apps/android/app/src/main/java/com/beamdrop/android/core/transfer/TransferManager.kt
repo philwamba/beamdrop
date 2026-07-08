@@ -48,6 +48,15 @@ class TransferManager(
             bytes = clipboardText.toByteArray(Charsets.UTF_8),
         )
 
+    fun sendPairingRequest(peer: TransferPeer, pairingPayload: String): TransferHistoryRecord =
+        sendBytes(
+            peer = peer,
+            type = AndroidTransferType.PAIRING_REQUEST,
+            fileName = "Pairing request",
+            mimeType = "application/vnd.beamdrop.pairing+json",
+            bytes = pairingPayload.toByteArray(Charsets.UTF_8),
+        )
+
     fun sendFile(
         peer: TransferPeer,
         fileName: String,

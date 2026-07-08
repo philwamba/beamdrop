@@ -50,6 +50,9 @@ struct MainWindowView: View {
             .sheet(item: $appState.pendingReceive) { request in
                 ReceiveApprovalDialog(request: request)
             }
+            .sheet(item: $appState.pendingPairing) { request in
+                PairingApprovalDialog(request: request)
+            }
         }
     }
 }

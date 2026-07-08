@@ -44,6 +44,7 @@ public struct TransferProgress: Equatable, Sendable {
 
 public typealias TransferProgressHandler = @Sendable (TransferProgress) -> Void
 public typealias ReceiveApprovalHandler = @Sendable (TransferEnvelope, TrustedPeer) -> Bool
+public typealias PairingApprovalHandler = @Sendable (PairingPayload) -> Bool
 
 public final class TransferService {
     private let identity: DeviceIdentity
@@ -224,6 +225,7 @@ public final class TransferService {
         _ connection: NWConnection,
         receiveDirectory: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!,
         approve: ReceiveApprovalHandler? = nil,
+        approvePairing: PairingApprovalHandler? = nil,
         progress: TransferProgressHandler? = nil,
         completion: @escaping @Sendable (Result<TransferEnvelope, Error>) -> Void
     ) {
@@ -233,6 +235,10 @@ public final class TransferService {
             do {
                 let header = try result.get()
                 let envelope = try TransferEnvelopeCodec.decode(String(decoding: header, as: UTF8.self))
+                if envelope.transferType == .pairingRequest {
+                    self.receivePairingRequest(envelope: envelope, connection: connection, approvePairing: approvePairing, completion: completion)
+                    return
+                }
                 let peer = try PeerTrustPolicy.requireTrusted(deviceId: envelope.senderDeviceId, store: self.peerStore)
                 guard peer.publicKey == envelope.senderPublicKey || envelope.senderPublicKey.isEmpty else {
                     throw BeamDropError.transferRejected("Sender public key does not match trusted device.")
@@ -262,6 +268,53 @@ public final class TransferService {
                 connection.cancel()
                 completion(.failure(error))
             }
+        }
+    }
+
+    private func receivePairingRequest(
+        envelope: TransferEnvelope,
+        connection: NWConnection,
+        approvePairing: PairingApprovalHandler?,
+        completion: @escaping @Sendable (Result<TransferEnvelope, Error>) -> Void
+    ) {
+        do {
+            guard envelope.encryption == nil else {
+                throw BeamDropError.invalidEncryptionMetadata("Pairing requests must not use transfer-session encryption before trust is established.")
+            }
+            guard envelope.payloadMetadata.sizeBytes > 0, envelope.payloadMetadata.sizeBytes <= 64 * 1024 else {
+                throw BeamDropError.invalidPairingPayload("pairing request payload size is invalid")
+            }
+            let expectedSize = Int(envelope.payloadMetadata.sizeBytes)
+            readExactly(connection, count: expectedSize, buffer: Data()) { [weak self] result in
+                guard let self else { return }
+                do {
+                    let data = try result.get()
+                    if let expectedHash = envelope.payloadMetadata.sha256,
+                       !SHA256Hashing.verify(data: data, expectedHex: expectedHash) {
+                        throw BeamDropError.hashMismatch(expected: expectedHash, actual: SHA256Hashing.hash(data: data))
+                    }
+                    let payload = try BeamDropJSON.decoder.decode(PairingPayload.self, from: data)
+                    try PairingValidator.validate(payload)
+                    guard payload.deviceId == envelope.senderDeviceId else {
+                        throw BeamDropError.invalidPairingPayload("senderDeviceId does not match pairing payload")
+                    }
+                    guard payload.publicKey == envelope.senderPublicKey || envelope.senderPublicKey.isEmpty else {
+                        throw BeamDropError.invalidPairingPayload("senderPublicKey does not match pairing payload")
+                    }
+                    guard approvePairing?(payload) == true else {
+                        throw BeamDropError.transferRejected("Pairing request was rejected.")
+                    }
+                    _ = try self.peerStore.approve(payload)
+                    try self.auditLog.record(type: "pairing_approved", message: "Trusted \(payload.deviceName) (\(payload.deviceId)) from pairing request.")
+                    completion(.success(envelope))
+                } catch {
+                    connection.cancel()
+                    completion(.failure(error))
+                }
+            }
+        } catch {
+            connection.cancel()
+            completion(.failure(error))
         }
     }
 

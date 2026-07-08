@@ -10,6 +10,7 @@ enum class AndroidTransferType {
     URL,
     FILE,
     CLIPBOARD_TEXT,
+    PAIRING_REQUEST,
 }
 
 enum class TransferDirection {

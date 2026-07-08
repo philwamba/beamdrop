@@ -13,6 +13,7 @@ import com.beamdrop.android.core.identity.DeviceIdentityRepository
 import com.beamdrop.android.core.identity.DeviceNameRepository
 import com.beamdrop.android.core.notifications.TransferNotificationActions
 import com.beamdrop.android.core.pairing.EndpointHint
+import com.beamdrop.android.core.pairing.PairingCodec
 import com.beamdrop.android.core.pairing.PairingSessionFactory
 import com.beamdrop.android.core.pairing.PairingValidator
 import com.beamdrop.android.core.pairing.TrustedPeer
@@ -39,6 +40,7 @@ import com.beamdrop.android.ui.transfer.SendFileScreen
 import com.beamdrop.android.ui.transfer.SendTextScreen
 import com.beamdrop.android.ui.transfer.TransferHistoryScreen
 import com.beamdrop.android.ui.transfer.firstTrustedTransferPeer
+import com.beamdrop.android.ui.transfer.toTransferPeer
 import com.beamdrop.android.ui.util.LocalNetworkAddress
 
 @Composable
@@ -76,6 +78,12 @@ internal fun BeamDropApp(
     fun reloadHistory() {
         history = historyStore.list()
     }
+
+    fun localEndpoint(): EndpointHint = EndpointHint(
+        host = LocalNetworkAddress.firstUsableIpv4Address(),
+        port = DEFAULT_TRANSFER_PORT,
+        route = "local",
+    )
 
     fun navigate(target: BeamDropDestination) {
         if (screen != target) {
@@ -185,8 +193,17 @@ internal fun BeamDropApp(
                 reloadPeers()
                 goBack()
             },
-            onTrusted = {
+            onTrusted = { peer ->
                 reloadPeers()
+                runCatching {
+                    val payload = PairingCodec.encode(
+                        PairingSessionFactory().createPayload(identity, endpoint = localEndpoint()),
+                    )
+                    transferManager.sendPairingRequest(peer.toTransferPeer(), payload)
+                    reloadHistory()
+                }.onFailure {
+                    clipboardMessage = "Device trusted locally, but the other device did not receive the pairing request: ${it.message}"
+                }
                 navigateTop(BeamDropDestination.Devices)
             },
         )

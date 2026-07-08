@@ -422,6 +422,39 @@ struct ReceiveApprovalDialog: View {
     }
 }
 
+struct PairingApprovalDialog: View {
+    let request: PendingPairingRequest
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Header(title: "Trust This Device?", subtitle: "\(request.deviceName) wants to pair with this Mac.")
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Platform: \(request.platform)")
+                Text("Fingerprint: \(request.fingerprint)")
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+            }
+            .foregroundStyle(.secondary)
+            PermissionNote(text: "Only trust devices you physically control. Unknown devices remain blocked unless you approve this request.")
+            HStack {
+                Button("Reject", role: .cancel) {
+                    request.reject()
+                    dismiss()
+                }
+                Spacer()
+                Button("Trust Device", systemImage: "checkmark.shield") {
+                    request.accept()
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+    }
+}
+
 struct TransferProgressView: View {
     let progress: TransferProgress
     let cancel: () -> Void
