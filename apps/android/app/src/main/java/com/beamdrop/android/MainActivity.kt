@@ -3,6 +3,7 @@ package com.beamdrop.android
 import android.Manifest
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -55,6 +63,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -65,6 +75,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,6 +90,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.beamdrop.android.core.identity.DeviceIdentityRepository
 import com.beamdrop.android.core.identity.DeviceNameRepository
 import com.beamdrop.android.core.clipboard.ClipboardSendResult
@@ -120,6 +134,15 @@ import com.beamdrop.android.ui.pairing.PairNewDeviceUiState
 import com.beamdrop.android.ui.pairing.QrCodeBitmap
 import com.beamdrop.android.ui.pairing.ScanQrController
 import com.beamdrop.android.ui.pairing.ScanQrUiState
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.DecodeHintType
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.NotFoundException
+import com.google.zxing.PlanarYUVLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -433,8 +456,27 @@ private fun HomeScreen(
     onNameSaved: (String) -> Unit,
 ) {
     var name by remember(identity.displayName) { mutableStateOf(identity.displayName) }
+    val trustedCount = peers.count { it.trustState == TrustState.Trusted }
     Scaffold(
-        topBar = { TopAppBar(title = { Text("BeamDrop") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("BeamDrop") },
+                actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Outlined.Security, contentDescription = "Settings")
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            BeamDropBottomBar(
+                current = Screen.Home,
+                onHome = {},
+                onDevices = onDevices,
+                onHistory = onHistory,
+                onSettings = onSettings,
+            )
+        },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -453,8 +495,11 @@ private fun HomeScreen(
                             modifier = Modifier.size(44.dp),
                         )
                         Column {
-                            Text("This Device", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Native Android app", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Ready to send", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (trustedCount == 0) "Pair a device to start" else "$trustedCount trusted ${if (trustedCount == 1) "device" else "devices"}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -467,8 +512,8 @@ private fun HomeScreen(
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("Android") })
-                        AssistChip(onClick = {}, label = { Text("Unknown to others until paired") })
+                        AssistChip(onClick = {}, label = { Text("This phone") })
+                        AssistChip(onClick = {}, label = { Text("No account needed") })
                     }
                     Spacer(Modifier.height(14.dp))
                     Button(onClick = { onNameSaved(name) }) {
@@ -482,12 +527,12 @@ private fun HomeScreen(
                     Button(onClick = onSendText, modifier = Modifier.weight(1f)) {
                         Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Send text")
+                        Text("Text")
                     }
                     OutlinedButton(onClick = onSendFile, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.AttachFile, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Send file")
+                        Text("File")
                     }
                 }
             }
@@ -497,12 +542,12 @@ private fun HomeScreen(
                     OutlinedButton(onClick = onSendClipboard, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.ContentPaste, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Clipboard")
+                        Text("Paste")
                     }
                     OutlinedButton(onClick = onHistory, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.History, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("History")
+                        Text("Activity")
                     }
                 }
             }
@@ -520,12 +565,12 @@ private fun HomeScreen(
                     Button(onClick = onPair, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.QrCode, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Pair")
+                        Text("Show my QR")
                     }
                     OutlinedButton(onClick = onScan, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.QrCodeScanner, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Scan")
+                        Text("Scan QR")
                     }
                 }
             }
@@ -535,7 +580,7 @@ private fun HomeScreen(
                     OutlinedButton(onClick = onNearby, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.Devices, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Nearby Devices")
+                        Text("Nearby")
                     }
                     OutlinedButton(onClick = onSettings, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Outlined.Security, contentDescription = null)
@@ -550,14 +595,14 @@ private fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Devices, contentDescription = null)
                         Spacer(Modifier.size(10.dp))
-                        Text("Trusted devices", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Your devices", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(Modifier.height(12.dp))
                     if (peers.none { it.trustState == TrustState.Trusted }) {
                         EmptyDevices(onPair, onScan)
                     } else {
                         peers.filter { it.trustState == TrustState.Trusted }.take(3).forEach { PeerRow(it) }
-                        TextButton(onClick = onDevices) { Text("Manage devices") }
+                        TextButton(onClick = onDevices) { Text("Manage trusted devices") }
                     }
                 }
             }
@@ -566,17 +611,17 @@ private fun HomeScreen(
                 OutlinedButton(onClick = onPermissions, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.Security, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    Text("Permissions and local network")
+                    Text("Permissions and connection help")
                 }
             }
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = onOnboarding, modifier = Modifier.weight(1f)) {
-                        Text("Onboarding")
+                        Text("How it works")
                     }
                     TextButton(onClick = onAbout, modifier = Modifier.weight(1f)) {
-                        Text("About BeamDrop")
+                        Text("About")
                     }
                 }
             }
@@ -639,15 +684,51 @@ private fun OnboardingScreen(onBack: () -> Unit, onPair: () -> Unit) {
 
 @Composable
 private fun EmptyDevices(onPair: () -> Unit, onScan: () -> Unit) {
-    Text("No trusted devices yet", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Text("Connect another device", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     Text(
-        "Pair with QR code to send locally without logging in. Unknown devices cannot send files silently.",
+        "Scan a BeamDrop QR code or show this phone's QR. You approve before anything is trusted.",
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Button(onClick = onPair) { Text("Show QR") }
-        OutlinedButton(onClick = onScan) { Text("Scan QR") }
+        Button(onClick = onScan) { Text("Scan QR") }
+        OutlinedButton(onClick = onPair) { Text("Show my QR") }
+    }
+}
+
+@Composable
+private fun BeamDropBottomBar(
+    current: Screen,
+    onHome: () -> Unit,
+    onDevices: () -> Unit,
+    onHistory: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    NavigationBar {
+        NavigationBarItem(
+            selected = current == Screen.Home,
+            onClick = onHome,
+            icon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
+            label = { Text("Home") },
+        )
+        NavigationBarItem(
+            selected = current == Screen.Devices,
+            onClick = onDevices,
+            icon = { Icon(Icons.Outlined.Devices, contentDescription = null) },
+            label = { Text("Devices") },
+        )
+        NavigationBarItem(
+            selected = current == Screen.History,
+            onClick = onHistory,
+            icon = { Icon(Icons.Outlined.History, contentDescription = null) },
+            label = { Text("History") },
+        )
+        NavigationBarItem(
+            selected = current == Screen.Settings,
+            onClick = onSettings,
+            icon = { Icon(Icons.Outlined.Security, contentDescription = null) },
+            label = { Text("Settings") },
+        )
     }
 }
 
@@ -776,7 +857,16 @@ private fun ScanQrScreen(
 ) {
     var state by remember { mutableStateOf(controller.state) }
     var rawQr by remember { mutableStateOf("") }
-    var cameraGrant by remember { mutableStateOf<RuntimePermissionGrant?>(null) }
+    val context = LocalContext.current
+    var cameraGrant by remember {
+        mutableStateOf(
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                RuntimePermissionGrant.Granted
+            } else {
+                null
+            },
+        )
+    }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         cameraGrant = if (granted) RuntimePermissionGrant.Granted else RuntimePermissionGrant.Denied
         if (granted) {
@@ -819,11 +909,32 @@ private fun ScanQrScreen(
                 )
             }
 
+            if (cameraGrant == RuntimePermissionGrant.Granted) {
+                item {
+                    SectionSurface {
+                        Text("Point your camera at a BeamDrop QR", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "When a valid code is found, BeamDrop will show the device name and ask you to approve it.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        QrCameraScanner(
+                            onQrCode = { scanned ->
+                                state = controller.handleScannedText(scanned)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(320.dp),
+                        )
+                    }
+                }
+            }
+
             item {
                 SectionSurface {
-                    Text("QR scanner", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Paste pairing code", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Camera decoding is isolated behind this screen. Manual payload entry is available for testing and accessibility fallback.",
+                        "Use this fallback if the camera cannot read the QR or another device shared the code as text.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -870,6 +981,123 @@ private fun PermissionCameraCard(
             RuntimePermissionGrant.ShowRationale, null -> Button(onClick = onRequest) { Text("Allow camera") }
         }
     }
+}
+
+@Composable
+private fun QrCameraScanner(
+    onQrCode: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val executor = remember { Executors.newSingleThreadExecutor() }
+    val didScan = remember { AtomicBoolean(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            executor.shutdown()
+        }
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = { viewContext ->
+            val previewView = PreviewView(viewContext).apply {
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(viewContext)
+            cameraProviderFuture.addListener(
+                {
+                    val cameraProvider = cameraProviderFuture.get()
+                    val preview = Preview.Builder().build().also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
+                    val analysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also { imageAnalysis ->
+                            imageAnalysis.setAnalyzer(executor) { image ->
+                                val result = decodeQrCode(image)
+                                image.close()
+                                if (result != null && didScan.compareAndSet(false, true)) {
+                                    Handler(Looper.getMainLooper()).post { onQrCode(result) }
+                                }
+                            }
+                        }
+
+                    runCatching {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            preview,
+                            analysis,
+                        )
+                    }.onFailure { error ->
+                        Log.w("BeamDropQrScanner", "Camera scanner could not start: ${error.message}")
+                    }
+                },
+                ContextCompat.getMainExecutor(context),
+            )
+            previewView
+        },
+    )
+}
+
+private fun decodeQrCode(image: ImageProxy): String? {
+    val luminance = image.toLuminanceBytes()
+    val source = PlanarYUVLuminanceSource(
+        luminance,
+        image.width,
+        image.height,
+        0,
+        0,
+        image.width,
+        image.height,
+        false,
+    )
+    val bitmap = BinaryBitmap(HybridBinarizer(source))
+    val reader = MultiFormatReader().apply {
+        setHints(
+            mapOf(
+                DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+                DecodeHintType.TRY_HARDER to true,
+            ),
+        )
+    }
+    return try {
+        reader.decode(bitmap).text
+    } catch (_: NotFoundException) {
+        null
+    } catch (error: Exception) {
+        Log.w("BeamDropQrScanner", "QR decode failed: ${error.message}")
+        null
+    } finally {
+        reader.reset()
+    }
+}
+
+private fun ImageProxy.toLuminanceBytes(): ByteArray {
+    val plane = planes.first()
+    val buffer = plane.buffer
+    val rowStride = plane.rowStride
+    val pixelStride = plane.pixelStride
+    val data = ByteArray(width * height)
+    val row = ByteArray(rowStride)
+    var outputOffset = 0
+
+    for (y in 0 until height) {
+        buffer.position(y * rowStride)
+        val bytesToRead = minOf(rowStride, buffer.remaining())
+        buffer.get(row, 0, bytesToRead)
+        var inputOffset = 0
+        for (x in 0 until width) {
+            data[outputOffset++] = row[inputOffset]
+            inputOffset += pixelStride
+        }
+    }
+
+    return data
 }
 
 @Composable

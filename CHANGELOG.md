@@ -2,6 +2,22 @@
 
 All notable BeamDrop changes are tracked here.
 
+## 0.1.0-internal.4 - 2026-07-08
+
+### Fixed
+
+- Android Pair New Device and Scan QR flows now present camera scanning as a
+  clear primary action for nontechnical users.
+- Android Scan QR now opens a real CameraX preview and decodes BeamDrop QR codes
+  instead of only offering manual payload entry.
+- Android home is reorganized around send, pair, devices, history, and settings
+  with clearer labels and bottom navigation.
+
+### Release Status
+
+- Private QA only. Android artifacts use internal debug signing unless production
+  signing credentials are provided.
+
 ## 0.1.0-internal.3 - 2026-07-08
 
 ### Fixed
