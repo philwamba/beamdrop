@@ -62,6 +62,16 @@ Task/detail destinations:
 
 These screens show a visible Back or Close action and return to the screen that makes sense for the task.
 
+Implementation structure:
+
+- Keep one `MainActivity` as the Android lifecycle and dependency setup entry point.
+- Put route state and back behavior in `navigation/BeamDropApp.kt`.
+- Put route names in `navigation/BeamDropDestination.kt`.
+- Put screens in product-area packages under `ui/`: `home`, `onboarding`, `pairing`, `devices`, `transfer`, `settings`, and `nearby`.
+- Put shared visual primitives in `ui/components`.
+- Put formatting and local UI helpers in `ui/util`.
+- Do not add one Activity per screen unless Android platform integration requires a distinct task, exported component, or external entry point.
+
 ## Onboarding Flow
 
 Purpose: explain BeamDrop in one screen without a generic marketing dashboard.
@@ -314,4 +324,3 @@ Content:
 Back behavior:
 
 - Back returns to Settings.
-
