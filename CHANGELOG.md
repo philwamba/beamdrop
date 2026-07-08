@@ -2,6 +2,22 @@
 
 All notable BeamDrop changes are tracked here.
 
+## 0.1.0-internal.3 - 2026-07-08
+
+### Fixed
+
+- Android internal APK artifacts are now signed so sideload installs are not
+  rejected as invalid packages.
+- macOS internal DMG packaging now includes a real app icon generated from the
+  BeamDrop logo asset.
+- macOS app resources are packaged inside `Contents/Resources` so the `.app`
+  bundle can be signed as a conventional app bundle.
+
+### Release Status
+
+- Private QA only. macOS artifacts still require Developer ID signing and Apple
+  notarization before public distribution.
+
 ## 0.1.0-internal.2 - 2026-07-08
 
 ### Added

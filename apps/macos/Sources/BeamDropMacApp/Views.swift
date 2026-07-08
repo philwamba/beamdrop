@@ -354,13 +354,41 @@ struct AppLogoHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image("BeamDropLogo", bundle: .module)
-                .resizable()
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .accessibilityLabel("BeamDrop logo")
+            BeamDropLogoImage()
             Header(title: title, subtitle: subtitle)
         }
+    }
+}
+
+private struct BeamDropLogoImage: View {
+    var body: some View {
+        Group {
+            if let image = Self.loadImage() {
+                Image(nsImage: image)
+                    .resizable()
+            } else {
+                Image(systemName: "paperplane.circle.fill")
+                    .resizable()
+                    .symbolRenderingMode(.hierarchical)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .accessibilityLabel("BeamDrop logo")
+    }
+
+    private static func loadImage() -> NSImage? {
+        if let url = Bundle.main.url(forResource: "BeamDropLogo", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+
+        if let url = Bundle.module.url(forResource: "BeamDropLogo", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+
+        return NSImage(named: "BeamDropLogo")
     }
 }
 

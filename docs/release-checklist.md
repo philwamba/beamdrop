@@ -28,9 +28,10 @@ network transfer.
   the publish job should request `contents: write`.
 - Safety gate: the workflow must verify an existing tag before creating or
   updating a GitHub Release.
-- Internal limitation: current Android artifacts are unsigned unless external
-  release signing is configured; current macOS DMG artifacts use a SwiftPM
-  wrapper that signs the executable only and is not notarization-ready.
+- Internal limitation: current Android artifacts use debug signing unless
+  external release signing is configured; current macOS DMG artifacts are ad-hoc
+  signed unless Developer ID signing and notarization environment variables are
+  configured.
 
 ## Product Readiness
 
@@ -144,10 +145,9 @@ Optional server release gates:
 - Manual QA checklist: pair with Android/iPhone/Windows, send text/file/folder,
   receive prompt, large file cancellation/resume where supported, reveal in
   Finder, firewall/blocked Bonjour diagnostics, revoked peer rejection.
-- Known limitations: package/notarization path and final entitlements are not
-  proven for public distribution; `scripts/build-macos-dmg.sh` creates an
-  internal DMG from the SwiftPM executable and does not produce a notarization-
-  ready app bundle.
+- Known limitations: Developer ID signing, notarization, stapling, and final
+  entitlements are not proven for public distribution; unsigned or ad-hoc signed
+  DMGs will trigger macOS Gatekeeper verification warnings.
 
 ### Windows Release Checklist
 

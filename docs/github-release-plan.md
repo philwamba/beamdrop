@@ -20,16 +20,17 @@ scripts/build-macos-dmg.sh
 ```
 
 The Android script runs unit tests and `assembleRelease`, then copies the release
-APK into `dist/release/`. The current Android Gradle config does not define
-release signing, so the artifact is expected to be unsigned unless signing is
-configured outside the repository.
+APK into `dist/release/`. Internal APKs use debug signing as an installability
+fallback when production release-signing environment variables are not provided.
+Public Android distribution still requires Play/App Signing credentials outside
+the repository.
 
 The macOS script runs `swift test`, builds the release executable, wraps it in a
-minimal `.app` bundle, signs the executable ad-hoc by default, and creates a DMG.
-Set `CODESIGN_IDENTITY` and `CODESIGN_DMG_IDENTITY` on a release machine to sign
-the executable and DMG. This SwiftPM wrapper is still an internal packaging path;
-public macOS distribution needs a production app-bundle export path that supports
-Developer ID signing, hardened runtime, notarization, and stapling.
+minimal `.app` bundle, signs the app bundle ad-hoc by default, and creates a DMG.
+Set `CODESIGN_IDENTITY`, `CODESIGN_DMG_IDENTITY`, and `NOTARYTOOL_PROFILE` on a
+release machine to produce Developer ID signed and notarized artifacts. Without
+Developer ID signing and notarization, macOS Gatekeeper will warn that Apple
+cannot verify the app.
 
 ## GitHub Release Workflow
 

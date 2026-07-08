@@ -16,12 +16,15 @@ if [[ -z "$APK_PATH" ]]; then
   exit 1
 fi
 
+if [[ "$APK_PATH" == *unsigned* ]]; then
+  echo "Release APK is unsigned. Configure internal debug fallback or release signing before publishing." >&2
+  exit 1
+fi
+
 mkdir -p "$DIST_DIR"
 cp "$APK_PATH" "$DIST_DIR/$ARTIFACT_NAME"
 
-if [[ "$APK_PATH" == *unsigned* ]]; then
-  echo "WARNING: packaged APK is unsigned and is only suitable for internal testing." >&2
-fi
+echo "WARNING: Android artifact is signed for installability, but production releases still require Play/App Signing credentials." >&2
 
 (
   cd "$DIST_DIR"
