@@ -43,6 +43,24 @@ jobs:
         with:
           gradle-version: "8.13"
 
+      - name: Prepare Android release signing
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_RELEASE_KEYSTORE_BASE64" || -z "$ANDROID_RELEASE_STORE_PASSWORD" || -z "$ANDROID_RELEASE_KEY_ALIAS" || -z "$ANDROID_RELEASE_KEY_PASSWORD" ]]; then
+            echo "Android release signing secrets are required. Refusing to publish a debug-signed release APK." >&2
+            exit 1
+          fi
+          KEYSTORE_PATH="$RUNNER_TEMP/beamdrop-release.jks"
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          echo "ANDROID_RELEASE_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "ANDROID_RELEASE_STORE_PASSWORD=$ANDROID_RELEASE_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_RELEASE_KEY_ALIAS=$ANDROID_RELEASE_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_RELEASE_KEY_PASSWORD=$ANDROID_RELEASE_KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Build APK artifact
         run: scripts/build-android-apk.sh
 

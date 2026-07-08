@@ -4,6 +4,26 @@ All notable BeamDrop changes are tracked here.
 
 ## Unreleased
 
+## 0.1.0-internal.7 - 2026-07-08
+
+### Fixed
+
+- Android release APK builds now fail closed when release signing credentials are
+  missing instead of falling back to the Android debug certificate.
+- Android APK metadata now uses the repository `VERSION` for `versionName` and a
+  monotonically increasing version code derived from the release version.
+- Added a local-only helper for generating an ignored internal Android release
+  keystore for sideload QA builds.
+- GitHub release workflow now requires Android release signing secrets before it
+  can publish Android APK artifacts.
+
+### Release Status
+
+- Private QA only. The Android APK can now be signed with a stable non-debug
+  internal key, but sideload installs may still show Play Protect reputation
+  warnings until distributed through Google Play or a recognized signing
+  certificate.
+
 ## 0.1.0-internal.6 - 2026-07-08
 
 ### Fixed

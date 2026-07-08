@@ -28,10 +28,10 @@ network transfer.
   the publish job should request `contents: write`.
 - Safety gate: the workflow must verify an existing tag before creating or
   updating a GitHub Release.
-- Internal limitation: current Android artifacts use debug signing unless
-  external release signing is configured; current macOS DMG artifacts are ad-hoc
-  signed unless Developer ID signing and notarization environment variables are
-  configured.
+- Internal limitation: Android release artifacts now require external release
+  signing and must fail closed when signing credentials are missing; current
+  macOS DMG artifacts are ad-hoc signed unless Developer ID signing and
+  notarization environment variables are configured.
 
 ## Product Readiness
 
@@ -95,6 +95,13 @@ Optional server release gates:
 - Test command: `gradle --no-daemon --max-workers=1 testDebugUnitTest`.
 - Signing requirement: Play App Signing or release keystore configured outside
   the repo; no debug signing for release artifacts.
+- GitHub release signing secrets required: `ANDROID_RELEASE_KEYSTORE_BASE64`,
+  `ANDROID_RELEASE_STORE_PASSWORD`, `ANDROID_RELEASE_KEY_ALIAS`, and
+  `ANDROID_RELEASE_KEY_PASSWORD`.
+- Sideload warning risk: Google Play Protect may still warn that it has not seen
+  this developer before when installing APKs outside Google Play. This is a
+  reputation/distribution limitation, not a code permission issue. Production
+  mitigation is Google Play distribution with Play App Signing.
 - Permission review: `INTERNET`, network state, Wi-Fi state/multicast, Nearby
   Wi-Fi Devices with `neverForLocation`, camera for QR scan, Android 13+
   notifications, and foreground service only for active transfer progress.
@@ -105,10 +112,9 @@ Optional server release gates:
   Android-Windows text transfer, small file transfer, large chunked file
   transfer, cancellation, corrupted hash failure, revoked peer rejection,
   notification prompt/progress, scoped storage save/reopen.
-- Known limitations: release build was not verified in this audit because local
-  Gradle initialization was blocked by native Gradle cache/library access in the
-  sandbox; run the command on a configured Android release machine before
-  signing.
+- Known limitations: release builds must be signed with a stable non-debug key.
+  Users who installed older debug-signed APKs must uninstall before installing a
+  differently signed APK with the same package name.
 
 ### iPhone Release Checklist
 

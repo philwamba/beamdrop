@@ -8,6 +8,10 @@ val releaseStoreFilePath = providers.environmentVariable("ANDROID_RELEASE_STORE_
 val releaseStorePassword = providers.environmentVariable("ANDROID_RELEASE_STORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("ANDROID_RELEASE_KEY_ALIAS").orNull
 val releaseKeyPassword = providers.environmentVariable("ANDROID_RELEASE_KEY_PASSWORD").orNull
+val repoRootDir = rootProject.projectDir.resolve("../..").canonicalFile
+val beamDropVersion = repoRootDir.resolve("VERSION").readText().trim()
+val androidVersionCode = providers.environmentVariable("ANDROID_VERSION_CODE").orNull?.toIntOrNull()
+    ?: beamDropVersion.toAndroidVersionCode()
 val hasReleaseSigning = listOf(
     releaseStoreFilePath,
     releaseStorePassword,
@@ -23,8 +27,8 @@ android {
         applicationId = "com.beamdrop.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = androidVersionCode
+        versionName = beamDropVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,10 +47,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -101,4 +103,14 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")
+}
+
+fun String.toAndroidVersionCode(): Int {
+    val match = Regex("""^(\d+)\.(\d+)\.(\d+)(?:-internal\.(\d+))?$""").matchEntire(this)
+        ?: error("VERSION must look like <major>.<minor>.<patch> or <major>.<minor>.<patch>-internal.<n>: $this")
+    val major = match.groupValues[1].toInt()
+    val minor = match.groupValues[2].toInt()
+    val patch = match.groupValues[3].toInt()
+    val internal = match.groupValues.getOrNull(4)?.takeIf { it.isNotBlank() }?.toInt() ?: 99
+    return (major * 1_000_000) + (minor * 10_000) + (patch * 100) + internal
 }
