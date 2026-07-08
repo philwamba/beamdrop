@@ -79,6 +79,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -262,6 +263,7 @@ private fun BeamDropApp(
     var refreshPairing by remember { mutableIntStateOf(0) }
     var selectedDevice by remember { mutableStateOf<TrustedPeer?>(null) }
     var clipboardMessage by remember { mutableStateOf<String?>(null) }
+    var previousScreen by remember { mutableStateOf<Screen?>(null) }
 
     fun reloadPeers() {
         peers = trustedPeerRepository.listPeers()
@@ -271,13 +273,27 @@ private fun BeamDropApp(
         history = historyStore.list()
     }
 
+    fun navigate(target: Screen) {
+        if (screen != target) {
+            previousScreen = screen
+            screen = target
+        }
+    }
+
+    fun navigateTop(target: Screen) {
+        previousScreen = null
+        screen = target
+    }
+
     fun goBack() {
         screen = when (screen) {
             Screen.Home -> Screen.Home
+            Screen.Devices, Screen.History, Screen.Settings -> Screen.Home
             Screen.DeviceDetail -> Screen.Devices
-            Screen.Privacy, Screen.Diagnostics, Screen.About -> Screen.Settings
-            else -> Screen.Home
+            Screen.Privacy, Screen.Diagnostics, Screen.About -> previousScreen ?: Screen.Settings
+            else -> previousScreen ?: Screen.Home
         }
+        previousScreen = null
     }
 
     BackHandler(enabled = screen != Screen.Home) {
@@ -290,19 +306,19 @@ private fun BeamDropApp(
             peers = peers,
             history = history,
             clipboardMessage = clipboardMessage,
-            onPair = { screen = Screen.Pair },
-            onScan = { screen = Screen.Scan },
-            onNearby = { screen = Screen.Nearby },
-            onDevices = { screen = Screen.Devices },
-            onPermissions = { screen = Screen.Permissions },
-            onSendText = { screen = Screen.SendText },
-            onSendFile = { screen = Screen.SendFile },
-            onSettings = { screen = Screen.Settings },
-            onAbout = { screen = Screen.About },
-            onOnboarding = { screen = Screen.Onboarding },
+            onPair = { navigate(Screen.Pair) },
+            onScan = { navigate(Screen.Scan) },
+            onNearby = { navigate(Screen.Nearby) },
+            onDevices = { navigateTop(Screen.Devices) },
+            onPermissions = { navigate(Screen.Permissions) },
+            onSendText = { navigate(Screen.SendText) },
+            onSendFile = { navigate(Screen.SendFile) },
+            onSettings = { navigateTop(Screen.Settings) },
+            onAbout = { navigate(Screen.About) },
+            onOnboarding = { navigate(Screen.Onboarding) },
             onHistory = {
                 reloadHistory()
-                screen = Screen.History
+                navigateTop(Screen.History)
             },
             onSendClipboard = {
                 peers.firstTrustedTransferPeer()?.let { peer ->
@@ -323,13 +339,13 @@ private fun BeamDropApp(
 
         Screen.Onboarding -> OnboardingScreen(
             onBack = ::goBack,
-            onPair = { screen = Screen.Pair },
+            onPair = { navigate(Screen.Pair) },
         )
 
         Screen.Nearby -> NearbyDevicesScreen(
             onBack = ::goBack,
-            onPair = { screen = Screen.Pair },
-            onDiagnostics = { screen = Screen.Diagnostics },
+            onPair = { navigate(Screen.Pair) },
+            onDiagnostics = { navigate(Screen.Diagnostics) },
         )
 
         Screen.Pair -> PairNewDeviceScreen(
@@ -345,7 +361,7 @@ private fun BeamDropApp(
             },
             onBack = ::goBack,
             onRefresh = { refreshPairing++ },
-            onScan = { screen = Screen.Scan },
+            onScan = { navigate(Screen.Scan) },
         )
 
         Screen.Scan -> ScanQrScreen(
@@ -361,27 +377,27 @@ private fun BeamDropApp(
             },
             onTrusted = {
                 reloadPeers()
-                screen = Screen.Devices
+                navigateTop(Screen.Devices)
             },
         )
 
         Screen.Devices -> TrustedDevicesScreen(
             peers = peers,
-            onBack = ::goBack,
-            onHome = { screen = Screen.Home },
+            onHome = { navigateTop(Screen.Home) },
             onHistory = {
                 reloadHistory()
-                screen = Screen.History
+                navigateTop(Screen.History)
             },
-            onSettings = { screen = Screen.Settings },
+            onSettings = { navigateTop(Screen.Settings) },
+            onScan = { navigate(Screen.Scan) },
             onRevoke = {
                 trustedPeerRepository.revoke(it)
                 reloadPeers()
             },
-            onPair = { screen = Screen.Pair },
+            onPair = { navigate(Screen.Pair) },
             onDevice = {
                 selectedDevice = it
-                screen = Screen.DeviceDetail
+                navigate(Screen.DeviceDetail)
             },
         )
 
@@ -391,7 +407,7 @@ private fun BeamDropApp(
             onRevoke = {
                 selectedDevice?.let { trustedPeerRepository.revoke(it.deviceId) }
                 reloadPeers()
-                screen = Screen.Devices
+                navigateTop(Screen.Devices)
             },
         )
 
@@ -405,12 +421,12 @@ private fun BeamDropApp(
             onSendText = { peer, text ->
                 transferManager.sendText(peer, text)
                 reloadHistory()
-                screen = Screen.History
+                navigateTop(Screen.History)
             },
             onSendUrl = { peer, url ->
                 transferManager.sendUrl(peer, url)
                 reloadHistory()
-                screen = Screen.History
+                navigateTop(Screen.History)
             },
         )
 
@@ -421,17 +437,16 @@ private fun BeamDropApp(
             onProgress = { progress = it },
             onDone = {
                 reloadHistory()
-                screen = Screen.History
+                navigateTop(Screen.History)
             },
         )
 
         Screen.History -> TransferHistoryScreen(
             history = history,
             progress = progress,
-            onBack = ::goBack,
-            onHome = { screen = Screen.Home },
-            onDevices = { screen = Screen.Devices },
-            onSettings = { screen = Screen.Settings },
+            onHome = { navigateTop(Screen.Home) },
+            onDevices = { navigateTop(Screen.Devices) },
+            onSettings = { navigateTop(Screen.Settings) },
             onCancel = {
                 transferManager.cancelTransfer(it)
                 reloadHistory()
@@ -439,24 +454,23 @@ private fun BeamDropApp(
         )
 
         Screen.Settings -> SettingsScreen(
-            onBack = ::goBack,
-            onHome = { screen = Screen.Home },
-            onDevices = { screen = Screen.Devices },
+            onHome = { navigateTop(Screen.Home) },
+            onDevices = { navigateTop(Screen.Devices) },
             onHistory = {
                 reloadHistory()
-                screen = Screen.History
+                navigateTop(Screen.History)
             },
-            onPrivacy = { screen = Screen.Privacy },
-            onDiagnostics = { screen = Screen.Diagnostics },
-            onPermissions = { screen = Screen.Permissions },
-            onAbout = { screen = Screen.About },
+            onPrivacy = { navigate(Screen.Privacy) },
+            onDiagnostics = { navigate(Screen.Diagnostics) },
+            onPermissions = { navigate(Screen.Permissions) },
+            onAbout = { navigate(Screen.About) },
         )
 
         Screen.Privacy -> PrivacyScreen(onBack = ::goBack)
 
         Screen.Diagnostics -> NetworkDiagnosticsScreen(
             onBack = ::goBack,
-            onPair = { screen = Screen.Pair },
+            onPair = { navigate(Screen.Pair) },
         )
 
         Screen.About -> AboutScreen(onBack = ::goBack)
@@ -886,6 +900,7 @@ private fun ScanQrScreen(
 ) {
     var state by remember { mutableStateOf(controller.state) }
     var rawQr by remember { mutableStateOf("") }
+    var scanAttempt by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     var cameraGrant by remember {
         mutableStateOf(
@@ -947,14 +962,16 @@ private fun ScanQrScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(12.dp))
-                        QrCameraScanner(
-                            onQrCode = { scanned ->
-                                state = controller.handleScannedText(scanned)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(320.dp),
-                        )
+                        key(scanAttempt) {
+                            QrCameraScanner(
+                                onQrCode = { scanned ->
+                                    state = controller.handleScannedText(scanned)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(320.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -986,7 +1003,14 @@ private fun ScanQrScreen(
             }
 
             item {
-                ScanStateMessage(state)
+                ScanStateMessage(
+                    state = state,
+                    onScanAgain = {
+                        controller.markCameraReady()
+                        state = controller.state
+                        scanAttempt++
+                    },
+                )
             }
         }
     }
@@ -1153,7 +1177,7 @@ private fun PairingApprovalDialog(
 }
 
 @Composable
-private fun ScanStateMessage(state: ScanQrUiState) {
+private fun ScanStateMessage(state: ScanQrUiState, onScanAgain: () -> Unit) {
     when (state) {
         ScanQrUiState.NeedsCameraPermissionExplanation ->
             InfoText("Grant camera permission or paste a BeamDrop QR payload.")
@@ -1167,8 +1191,15 @@ private fun ScanStateMessage(state: ScanQrUiState) {
         is ScanQrUiState.Trusted ->
             InfoText("${state.peer.displayName} is now trusted.")
 
-        is ScanQrUiState.Error ->
+        is ScanQrUiState.Error -> {
             ErrorText(state.error.userMessage())
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onScanAgain) {
+                Icon(Icons.Outlined.Refresh, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("Scan again")
+            }
+        }
     }
 }
 
@@ -1176,7 +1207,10 @@ private fun ScanStateMessage(state: ScanQrUiState) {
 @Composable
 private fun TrustedDevicesScreen(
     peers: List<TrustedPeer>,
-    onBack: () -> Unit,
+    onHome: () -> Unit,
+    onHistory: () -> Unit,
+    onSettings: () -> Unit,
+    onScan: () -> Unit,
     onRevoke: (String) -> Unit,
     onPair: () -> Unit,
     onDevice: (TrustedPeer) -> Unit,
@@ -1203,7 +1237,15 @@ private fun TrustedDevicesScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Trusted Devices") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+        bottomBar = {
+            BeamDropBottomBar(
+                current = Screen.Devices,
+                onHome = onHome,
+                onDevices = {},
+                onHistory = onHistory,
+                onSettings = onSettings,
             )
         },
     ) { padding ->
@@ -1218,7 +1260,7 @@ private fun TrustedDevicesScreen(
             if (peers.isEmpty()) {
                 item {
                     SectionSurface {
-                        EmptyDevices(onPair = onPair, onScan = onPair)
+                        EmptyDevices(onPair = onPair, onScan = onScan)
                     }
                 }
             } else {
@@ -1605,14 +1647,24 @@ private fun SendFileScreen(
 private fun TransferHistoryScreen(
     history: List<TransferHistoryRecord>,
     progress: TransferProgress?,
-    onBack: () -> Unit,
+    onHome: () -> Unit,
+    onDevices: () -> Unit,
+    onSettings: () -> Unit,
     onCancel: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Transfer History") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+        bottomBar = {
+            BeamDropBottomBar(
+                current = Screen.History,
+                onHome = onHome,
+                onDevices = onDevices,
+                onHistory = {},
+                onSettings = onSettings,
             )
         },
     ) { padding ->
@@ -1648,7 +1700,9 @@ private fun TransferHistoryScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(
-    onBack: () -> Unit,
+    onHome: () -> Unit,
+    onDevices: () -> Unit,
+    onHistory: () -> Unit,
     onPrivacy: () -> Unit,
     onDiagnostics: () -> Unit,
     onPermissions: () -> Unit,
@@ -1658,7 +1712,15 @@ private fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+            )
+        },
+        bottomBar = {
+            BeamDropBottomBar(
+                current = Screen.Settings,
+                onHome = onHome,
+                onDevices = onDevices,
+                onHistory = onHistory,
+                onSettings = {},
             )
         },
     ) { padding ->
@@ -1787,6 +1849,26 @@ private fun TransferProgressCard(
     progress: TransferProgress,
     onCancel: () -> Unit,
 ) {
+    var confirmCancel by remember { mutableStateOf(false) }
+    if (confirmCancel) {
+        AlertDialog(
+            onDismissRequest = { confirmCancel = false },
+            title = { Text("Cancel transfer?") },
+            text = {
+                Text("This stops the current transfer with ${progress.peer.displayName}. The cancelled transfer will appear in history.")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    confirmCancel = false
+                    onCancel()
+                }) { Text("Cancel transfer") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmCancel = false }) { Text("Keep sending") }
+            },
+        )
+    }
+
     SectionSurface {
         Text(progress.metadata.fileName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text("${progress.peer.displayName} · ${progress.direction.name} · ${progress.status.name}")
@@ -1801,7 +1883,7 @@ private fun TransferProgressCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(10.dp))
-        OutlinedButton(onClick = onCancel) {
+        OutlinedButton(onClick = { confirmCancel = true }) {
             Icon(Icons.Outlined.StopCircle, contentDescription = null)
             Spacer(Modifier.size(8.dp))
             Text("Cancel")
