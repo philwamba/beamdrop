@@ -4,6 +4,8 @@ All notable BeamDrop changes are tracked here.
 
 ## Unreleased
 
+## 0.1.0-internal.6 - 2026-07-08
+
 ### Fixed
 
 - Encrypted transfers now use one sealed-chunk wire framing on every platform
@@ -14,10 +16,23 @@ All notable BeamDrop changes are tracked here.
 - Android QR scanning is more tolerant of camera frame orientation and luminance
   layout, and the scanner now enters the ready state automatically when camera
   permission was already granted.
-- Android top-level navigation is consistent again: Home uses the same four-item
-  bottom bar as Devices, History, and Settings.
+- Android top-level navigation is consistent again: Home, Devices, History, and
+  Settings use the same four-item bottom bar, while send and receive actions
+  live on the Home screen.
 - Android theme colors now follow the BeamDrop logo's blue/cyan palette instead
   of the temporary green palette.
+- Android back and close actions now use icon buttons instead of text buttons.
+- Android device renaming now opens from an edit icon beside the phone name,
+  saves from a dialog, and shows a confirmation toast.
+- Android Home now exposes receive actions directly with Show QR and Scan QR
+  buttons.
+
+### Release Status
+
+- Private QA only. Android artifacts use internal signing for sideload
+  installability, not production Play/App Signing credentials.
+- macOS artifacts are ad-hoc signed unless Developer ID signing and notarization
+  are configured outside the repository.
 
 ## 0.1.0-internal.5 - 2026-07-08
 
