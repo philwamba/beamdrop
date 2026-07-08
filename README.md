@@ -7,7 +7,7 @@
 Native private device transfer for Android, iPhone, Windows, and macOS.
 
 [![Project status: MVP development](https://img.shields.io/badge/status-MVP%20development-2563eb)](#current-status)
-[![Release: not published](https://img.shields.io/badge/release-not%20published-6b7280)](#downloads)
+[![Release: GitHub Releases](https://img.shields.io/badge/release-GitHub%20Releases-2563eb)](https://github.com/philwamba/beamdrop/releases)
 [![Protocol: 1.0](https://img.shields.io/badge/protocol-1.0-059669)](protocol/beamdrop-protocol/compatibility-matrix.md)
 [![Native only](https://img.shields.io/badge/native-only-111827)](#supported-platforms)
 [![Local first](https://img.shields.io/badge/local--first-no%20cloud%20upload-0f766e)](#development-principles)
@@ -45,22 +45,27 @@ wrapper, or browser-only application.
 | macOS | ![macOS: native foundation](https://img.shields.io/badge/macOS-native%20foundation-111827) |
 | Windows | ![Windows: MVP transfer work](https://img.shields.io/badge/Windows-MVP%20transfer%20work-0078d4) |
 | Shared Rust core | ![Rust core: foundation](https://img.shields.io/badge/Rust%20core-foundation-b7410e) |
-| Public downloads | ![Downloads: not published](https://img.shields.io/badge/downloads-not%20published-6b7280) |
+| Public downloads | ![Downloads: GitHub prereleases](https://img.shields.io/badge/downloads-GitHub%20prereleases-2563eb) |
 
 ## Downloads
 
-Official BeamDrop downloads will be published through GitHub Releases when
-platform builds are ready for public testing.
+BeamDrop downloads are published through GitHub Releases:
 
-| Platform | Package | Status |
+[Download Latest BeamDrop Release](https://github.com/philwamba/beamdrop/releases/latest)
+
+| Platform | Download | Notes |
 | --- | --- | --- |
-| Android | `.apk` / Play Store release track | In development |
-| iPhone | TestFlight / App Store | Planned |
-| macOS | `.dmg` / notarized app | In development |
-| Windows | `.msix` / installer | In development |
+| Android | [APK releases](https://github.com/philwamba/beamdrop/releases) | Look for `BeamDrop-Android-*-internal.apk` and verify the matching `.sha256` file. |
+| macOS | [DMG releases](https://github.com/philwamba/beamdrop/releases) | Look for `BeamDrop-macOS-*-internal.dmg` and verify the matching `.sha256` file. |
+| iPhone | TestFlight / App Store | Planned; no iPhone public package is published yet. |
+| Windows | MSIX / installer | Planned; no Windows public package is published yet. |
 
-BeamDrop does not currently publish production downloads. Avoid installing
-unofficial builds from third-party mirrors.
+Current GitHub downloads are prerelease/internal testing artifacts unless a
+release explicitly says otherwise. Android APKs are not Play Store signed yet.
+macOS DMGs are not notarized yet.
+
+Do not download BeamDrop from third-party mirrors. Use only the GitHub Releases
+page for repository-published artifacts.
 
 ## Builds
 
@@ -76,8 +81,10 @@ native toolchain.
 | Rust core | `core/beamdrop-core/` | `cargo test --workspace` |
 | Optional servers | `server/beamdrop-*` | `pnpm test && pnpm build` |
 
-Release automation will live under `.github/workflows/` and should produce
-signed, verifiable artifacts for each platform before downloads are published.
+Release automation lives under `.github/workflows/` and publishes generated
+artifacts to GitHub Releases. Local `dist/` output is intentionally ignored by
+git; release artifacts should be downloaded from GitHub Releases, not committed
+to the repository.
 
 ## Releases
 
