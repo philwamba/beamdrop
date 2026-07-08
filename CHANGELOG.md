@@ -4,6 +4,24 @@ All notable BeamDrop changes are tracked here.
 
 ## Unreleased
 
+## 0.1.0-internal.8 - 2026-07-08
+
+### Fixed
+
+- macOS incoming pairing and transfer approval prompts now bring the BeamDrop
+  window forward so Android sends do not appear to fail silently while the Mac
+  is waiting in the background.
+- macOS approval timeouts and explicit rejections now show clear in-app error
+  messages.
+- macOS DMG packaging now includes local network and Bonjour privacy
+  declarations for `_beamdrop._tcp`, improving pairing/discovery/transfer
+  behavior on recent macOS releases.
+
+### Release Status
+
+- Private QA only. The macOS DMG is still ad-hoc signed unless Developer ID
+  signing and notarization are configured outside the repository.
+
 ## 0.1.0-internal.7 - 2026-07-08
 
 ### Fixed

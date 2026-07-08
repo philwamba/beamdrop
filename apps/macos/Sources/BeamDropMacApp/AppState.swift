@@ -229,6 +229,7 @@ final class AppState: ObservableObject {
             let semaphore = DispatchSemaphore(value: 0)
             var approved = false
             Task { @MainActor in
+                self.presentIncomingRequestWindow()
                 self.pendingReceive = PendingReceiveRequest(
                     senderName: peer.deviceName,
                     fileName: envelope.payloadMetadata.fileName,
@@ -243,14 +244,22 @@ final class AppState: ObservableObject {
                     }
                 )
             }
-            _ = semaphore.wait(timeout: .now() + 120)
-            Task { @MainActor in self.pendingReceive = nil }
+            let waitResult = semaphore.wait(timeout: .now() + 120)
+            Task { @MainActor in
+                self.pendingReceive = nil
+                if waitResult == .timedOut {
+                    self.lastError = "Incoming transfer from \(peer.deviceName) timed out waiting for approval."
+                } else if !approved {
+                    self.lastError = "Incoming transfer from \(peer.deviceName) was rejected."
+                }
+            }
             return approved
         } approvePairing: { [weak self] payload in
             guard let self else { return false }
             let semaphore = DispatchSemaphore(value: 0)
             var approved = false
             Task { @MainActor in
+                self.presentIncomingRequestWindow()
                 self.pendingPairing = PendingPairingRequest(
                     deviceName: payload.deviceName,
                     platform: payload.platform.rawValue,
@@ -265,8 +274,15 @@ final class AppState: ObservableObject {
                     }
                 )
             }
-            _ = semaphore.wait(timeout: .now() + 120)
-            Task { @MainActor in self.pendingPairing = nil }
+            let waitResult = semaphore.wait(timeout: .now() + 120)
+            Task { @MainActor in
+                self.pendingPairing = nil
+                if waitResult == .timedOut {
+                    self.lastError = "Pairing request from \(payload.deviceName) timed out waiting for approval."
+                } else if !approved {
+                    self.lastError = "Pairing request from \(payload.deviceName) was rejected."
+                }
+            }
             return approved
         } progress: { progress in
             Task { @MainActor in self.activeProgress = progress }
@@ -277,6 +293,13 @@ final class AppState: ObservableObject {
                 }
                 self?.refresh()
             }
+        }
+    }
+
+    private func presentIncomingRequestWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first {
+            window.makeKeyAndOrderFront(nil)
         }
     }
 }

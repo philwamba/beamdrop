@@ -85,6 +85,12 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
   <string>14.0</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>BeamDrop uses the local network to find and transfer files to your trusted nearby devices.</string>
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_beamdrop._tcp</string>
+  </array>
 </dict>
 </plist>
 PLIST
