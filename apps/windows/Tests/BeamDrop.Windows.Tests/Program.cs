@@ -27,8 +27,23 @@ internal sealed class WindowsTests
         await TestReceiveMissingHashCannotComplete();
         TestTrustedPeerRejection();
         TestPathTraversalFileNameRejected();
+        TestReceivedFileNameTraversalVariantsRejected();
         await TestClipboardPolicy();
         TestResumePlanning();
+        TestSessionKeyConformanceVector();
+        TestChunkSealConformanceVectors();
+        TestSessionCryptoRejectsTamperedChunk();
+        TestSessionCryptoRejectsAllZeroSharedSecret();
+        TestChunkStreamsRoundTripMultiChunk();
+        TestSpkiKeyHelpers();
+        TestTransferEnvelopeEncryptionRoundTrip();
+        TestTransferEnvelopeRejectsInvalidEncryptionBlock();
+        await TestEncryptedTransferEndToEnd();
+        await TestEncryptedTransferAuthFailureFailsTransfer();
+        await TestEncryptedTransferWithoutSessionServiceFails();
+        await TestLegacyPlaintextTransferStillWorksAndIsLogged();
+        TestDpapiProtectorRoundTrip();
+        TestProductionProtectorSelection();
         Console.WriteLine("BeamDrop Windows tests passed.");
     }
 
@@ -262,6 +277,333 @@ internal sealed class WindowsTests
         AssertThrows<InvalidOperationException>(() => factory.Create(manifest), "path traversal file name rejected");
     }
 
+    private static void TestReceivedFileNameTraversalVariantsRejected()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "beamdrop-tests", Guid.NewGuid().ToString("N"));
+        var factory = new DownloadsReceiveTargetFactory(root, Path.Combine(root, "staging"));
+        var maliciousNames = new[]
+        {
+            "../secret.txt",
+            "..\\secret.txt",
+            "C:\\Windows\\System32\\evil.txt",
+            "/etc/passwd",
+            "nested\\evil.txt",
+            "nested/evil.txt",
+            "drive:stream.txt",
+            "file\u0001name.txt",
+            "file\nname.txt",
+            ".."
+        };
+
+        foreach (var name in maliciousNames)
+        {
+            var manifest = Manifest(size: 1, sha: new string('f', 64)) with { FileName = name };
+            AssertThrows<InvalidOperationException>(() => factory.Create(manifest), $"malicious file name rejected: {name.ReplaceLineEndings("\\n")}");
+        }
+    }
+
+    // Conformance vectors from protocol/beamdrop-protocol/test-vectors/session-encryption-v1.json.
+    private const string VectorSenderDeviceId = "device-sender-01";
+    private const string VectorReceiverDeviceId = "device-receiver-02";
+    private const string VectorTransferId = "tx-0001";
+    private const string VectorSenderStaticSecretHex = "1111111111111111111111111111111111111111111111111111111111111111";
+    private const string VectorSenderStaticPublicHex = "7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13";
+    private const string VectorReceiverStaticSecretHex = "2222222222222222222222222222222222222222222222222222222222222222";
+    private const string VectorReceiverStaticPublicHex = "0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20";
+    private const string VectorEphemeralSecretHex = "4444444444444444444444444444444444444444444444444444444444444444";
+    private const string VectorEphemeralPublicHex = "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b";
+    private const string VectorSessionKeyHex = "fb67bd5e5472aec109bb4ef123ecf106782f76dd6ccef2c7b72db1b0bf8c8ecc";
+    private static readonly (long Index, string PlaintextUtf8, string SealedHex)[] VectorChunks =
+    {
+        (0, "BeamDrop chunk zero", "010000000000000000000000bbd2cd42ded08e24e8054fe22fd1aa439131de0b8f93e520c9b6fa149fc76716eebfe7"),
+        (1, "BeamDrop chunk one", "010000000000000000000001572cefa90bc480e6e52513f8f029e6d6c42f7ca3377656d04ea0e349d9f175534a3c"),
+        (2, "", "010000000000000000000002bb027ed44e2d74dad6563267b8acb77f")
+    };
+
+    private static SessionCrypto VectorSenderSession() => SessionCrypto.Initiate(
+        Convert.FromHexString(VectorSenderStaticSecretHex),
+        Convert.FromHexString(VectorReceiverStaticPublicHex),
+        VectorSenderDeviceId,
+        VectorReceiverDeviceId,
+        VectorTransferId,
+        ephemeralSecret: Convert.FromHexString(VectorEphemeralSecretHex));
+
+    private static SessionCrypto VectorReceiverSession() => SessionCrypto.Accept(
+        Convert.FromHexString(VectorReceiverStaticSecretHex),
+        Convert.FromHexString(VectorEphemeralPublicHex),
+        Convert.FromHexString(VectorSenderStaticPublicHex),
+        VectorSenderDeviceId,
+        VectorReceiverDeviceId,
+        VectorTransferId);
+
+    private static void TestSessionKeyConformanceVector()
+    {
+        AssertEqual(
+            VectorSenderStaticPublicHex,
+            Convert.ToHexString(SessionCrypto.PublicKeyFromSecret(Convert.FromHexString(VectorSenderStaticSecretHex))).ToLowerInvariant(),
+            "sender static public key derivation");
+        AssertEqual(
+            VectorReceiverStaticPublicHex,
+            Convert.ToHexString(SessionCrypto.PublicKeyFromSecret(Convert.FromHexString(VectorReceiverStaticSecretHex))).ToLowerInvariant(),
+            "receiver static public key derivation");
+
+        var sender = VectorSenderSession();
+        AssertEqual(VectorEphemeralPublicHex, Convert.ToHexString(sender.EphemeralPublicKey).ToLowerInvariant(), "ephemeral public key derivation");
+        AssertEqual(VectorSessionKeyHex, Convert.ToHexString(sender.SessionKey).ToLowerInvariant(), "sender session key conformance");
+
+        var receiver = VectorReceiverSession();
+        AssertEqual(VectorSessionKeyHex, Convert.ToHexString(receiver.SessionKey).ToLowerInvariant(), "receiver session key conformance");
+    }
+
+    private static void TestChunkSealConformanceVectors()
+    {
+        var sender = VectorSenderSession();
+        var receiver = VectorReceiverSession();
+        foreach (var (index, plaintextUtf8, sealedHex) in VectorChunks)
+        {
+            var sealedChunk = sender.SealChunk(index, Encoding.UTF8.GetBytes(plaintextUtf8));
+            AssertEqual(sealedHex, Convert.ToHexString(sealedChunk).ToLowerInvariant(), $"sealed chunk {index} conformance");
+
+            var opened = receiver.OpenChunk(index, Convert.FromHexString(sealedHex));
+            AssertEqual(plaintextUtf8, Encoding.UTF8.GetString(opened), $"opened chunk {index} conformance");
+        }
+    }
+
+    private static void TestSessionCryptoRejectsTamperedChunk()
+    {
+        var receiver = VectorReceiverSession();
+        var tampered = Convert.FromHexString(VectorChunks[0].SealedHex);
+        tampered[^1] ^= 0x01;
+        AssertThrows<SessionCryptoException>(() => receiver.OpenChunk(0, tampered), "tampered chunk rejected");
+
+        var reordered = Convert.FromHexString(VectorChunks[0].SealedHex);
+        AssertThrows<SessionCryptoException>(() => receiver.OpenChunk(1, reordered), "reordered chunk rejected");
+
+        AssertThrows<SessionCryptoException>(() => receiver.OpenChunk(0, new byte[SessionCrypto.SealOverheadBytes - 1]), "truncated chunk rejected");
+    }
+
+    private static void TestSessionCryptoRejectsAllZeroSharedSecret()
+    {
+        AssertThrows<SessionCryptoException>(
+            () => SessionCrypto.Initiate(
+                Convert.FromHexString(VectorSenderStaticSecretHex),
+                new byte[32],
+                VectorSenderDeviceId,
+                VectorReceiverDeviceId,
+                VectorTransferId),
+            "all-zero shared secret rejected");
+    }
+
+    private static void TestChunkStreamsRoundTripMultiChunk()
+    {
+        var payload = Enumerable.Range(0, 1000).Select(value => (byte)value).ToArray();
+        const int chunkSize = 256; // 4 chunks: 3 full chunks and a 232-byte tail.
+
+        var sealing = new ChunkSealingStream(new MemoryStream(payload), VectorSenderSession(), payload.Length, chunkSize);
+        using var sealedStream = new MemoryStream();
+        sealing.CopyTo(sealedStream);
+        AssertEqual(payload.Length + (4 * 28L), sealedStream.Length, "multi-chunk sealed size includes per-chunk overhead");
+
+        var opening = new ChunkOpeningStream(new MemoryStream(sealedStream.ToArray()), VectorReceiverSession(), payload.Length, chunkSize);
+        using var plainStream = new MemoryStream();
+        opening.CopyTo(plainStream);
+        AssertTrue(plainStream.ToArray().AsSpan().SequenceEqual(payload), "multi-chunk seal and open round trip");
+
+        var emptySealing = new ChunkSealingStream(new MemoryStream(), VectorSenderSession(), 0, chunkSize);
+        using var emptySealed = new MemoryStream();
+        emptySealing.CopyTo(emptySealed);
+        AssertEqual(28L, emptySealed.Length, "empty payload seals to a single empty chunk");
+
+        var emptyOpening = new ChunkOpeningStream(new MemoryStream(emptySealed.ToArray()), VectorReceiverSession(), 0, chunkSize);
+        using var emptyPlain = new MemoryStream();
+        emptyOpening.CopyTo(emptyPlain);
+        AssertEqual(0L, emptyPlain.Length, "empty payload opens to zero bytes");
+    }
+
+    private static void TestSpkiKeyHelpers()
+    {
+        var raw = Convert.FromHexString(VectorSenderStaticPublicHex);
+        var spki = SessionCrypto.SpkiBase64FromRawPublicKey(raw);
+        AssertTrue(spki.StartsWith("MCowBQYDK2VuAyEA", StringComparison.Ordinal), "spki base64 has X25519 DER prefix");
+        AssertTrue(SessionCrypto.RawPublicKeyFromSpkiBase64(spki).AsSpan().SequenceEqual(raw), "spki round trip preserves raw key");
+        AssertFalse(SessionCrypto.TryRawPublicKeyFromSpkiBase64("not-base64!", out _), "invalid base64 spki rejected");
+        AssertFalse(SessionCrypto.TryRawPublicKeyFromSpkiBase64(Convert.ToBase64String(new byte[44]), out _), "wrong DER prefix rejected");
+    }
+
+    private static void TestTransferEnvelopeEncryptionRoundTrip()
+    {
+        var manifest = Manifest(size: 8, sha: new string('f', 64)) with
+        {
+            Encryption = new TransferEncryptionInfo(SessionCrypto.Scheme, VectorEphemeralPublicHex)
+        };
+
+        var json = TransferEnvelopeCodec.Encode(manifest);
+        AssertTrue(json.Contains("\"encryption\"", StringComparison.Ordinal), "envelope json carries encryption block");
+        AssertTrue(json.Contains("\"ephemeralPublicKey\"", StringComparison.Ordinal), "envelope json carries camelCase ephemeral key");
+
+        var decoded = TransferEnvelopeCodec.Decode(json);
+        AssertEqual(SessionCrypto.Scheme, decoded.Encryption?.Scheme, "decoded encryption scheme");
+        AssertEqual(VectorEphemeralPublicHex, decoded.Encryption?.EphemeralPublicKey, "decoded ephemeral public key");
+
+        var legacy = TransferEnvelopeCodec.Decode(TransferEnvelopeCodec.Encode(Manifest(size: 8, sha: new string('f', 64))));
+        AssertTrue(legacy.Encryption is null, "legacy envelope has no encryption block");
+    }
+
+    private static void TestTransferEnvelopeRejectsInvalidEncryptionBlock()
+    {
+        var validJson = TransferEnvelopeCodec.Encode(Manifest(size: 8, sha: new string('f', 64)) with
+        {
+            Encryption = new TransferEncryptionInfo(SessionCrypto.Scheme, VectorEphemeralPublicHex)
+        });
+
+        AssertThrows<InvalidOperationException>(
+            () => TransferEnvelopeCodec.Decode(validJson.Replace("BEAMDROP_SESSION_V1", "BEAMDROP_SESSION_V9")),
+            "unknown encryption scheme rejected");
+        AssertThrows<InvalidOperationException>(
+            () => TransferEnvelopeCodec.Decode(validJson.Replace(VectorEphemeralPublicHex, "zz")),
+            "invalid ephemeral public key rejected");
+    }
+
+    private static async Task TestEncryptedTransferEndToEnd()
+    {
+        var senderService = new SessionEncryptionService(SessionCrypto.GenerateSecretKey());
+        var receiverService = new SessionEncryptionService(SessionCrypto.GenerateSecretKey());
+
+        var senderFixture = Fixture(trustState: TrustState.Trusted, peerPublicKey: receiverService.LocalPublicKeyBase64, sessionEncryption: senderService);
+        var senderManager = new TransferManager(
+            senderFixture.Repository,
+            new InMemoryTransferHistoryStore(),
+            new MemoryReceiveTargetFactory(),
+            new FixedApprovalPrompt(ReceiveDecision.Accept),
+            senderFixture.AuditLog,
+            localDeviceId: "bd-windows-sender",
+            localPublicKey: senderService.LocalPublicKeyBase64,
+            sessionEncryption: senderService);
+
+        var payload = Encoding.UTF8.GetBytes("encrypted hello");
+        var transport = new RecordingTransferTransport();
+        var sent = await senderManager.SendTextAsync(PeerId, "encrypted hello", transport, CancellationToken.None);
+
+        AssertEqual(TransferStatus.Completed, sent.Status, "encrypted send completed");
+        AssertTrue(transport.Manifest?.Encryption is not null, "encrypted envelope includes encryption block");
+        AssertEqual(payload.Length + 28L, transport.Sink.Length, "sealed payload carries nonce and tag overhead");
+        AssertFalse(transport.Sink.ToArray().AsSpan(12, payload.Length).SequenceEqual(payload), "sealed payload is not plaintext");
+
+        var receiverFixture = ReceiverFixture("bd-windows-sender", senderService.LocalPublicKeyBase64, receiverService);
+        var received = await receiverFixture.Manager.ReceiveFileAsync(
+            new IncomingTransferRequest(transport.Manifest!, new TransferPeer("bd-windows-sender", "Sender", senderService.LocalPublicKeyBase64, AutoAcceptTransfers: true)),
+            new MemoryStream(transport.Sink.ToArray()),
+            CancellationToken.None);
+
+        AssertEqual(TransferStatus.Completed, received.Status, "encrypted receive completed with verified hash");
+    }
+
+    private static async Task TestEncryptedTransferAuthFailureFailsTransfer()
+    {
+        var senderService = new SessionEncryptionService(SessionCrypto.GenerateSecretKey());
+        var receiverService = new SessionEncryptionService(SessionCrypto.GenerateSecretKey());
+
+        var senderFixture = Fixture(trustState: TrustState.Trusted, peerPublicKey: receiverService.LocalPublicKeyBase64, sessionEncryption: senderService);
+        var senderManager = new TransferManager(
+            senderFixture.Repository,
+            new InMemoryTransferHistoryStore(),
+            new MemoryReceiveTargetFactory(),
+            new FixedApprovalPrompt(ReceiveDecision.Accept),
+            senderFixture.AuditLog,
+            localDeviceId: "bd-windows-sender",
+            localPublicKey: senderService.LocalPublicKeyBase64,
+            sessionEncryption: senderService);
+
+        var transport = new RecordingTransferTransport();
+        await senderManager.SendTextAsync(PeerId, "encrypted hello", transport, CancellationToken.None);
+
+        var tampered = transport.Sink.ToArray();
+        tampered[^1] ^= 0x01;
+
+        var receiverFixture = ReceiverFixture("bd-windows-sender", senderService.LocalPublicKeyBase64, receiverService);
+        var received = await receiverFixture.Manager.ReceiveFileAsync(
+            new IncomingTransferRequest(transport.Manifest!, new TransferPeer("bd-windows-sender", "Sender", senderService.LocalPublicKeyBase64, AutoAcceptTransfers: true)),
+            new MemoryStream(tampered),
+            CancellationToken.None);
+
+        AssertEqual(TransferStatus.Failed, received.Status, "tampered encrypted transfer fails");
+    }
+
+    private static async Task TestEncryptedTransferWithoutSessionServiceFails()
+    {
+        var fixture = Fixture(trustState: TrustState.Trusted);
+        var manifest = Manifest(size: 5, sha: new string('f', 64)) with
+        {
+            Encryption = new TransferEncryptionInfo(SessionCrypto.Scheme, VectorEphemeralPublicHex)
+        };
+
+        var record = await fixture.Manager.ReceiveFileAsync(
+            new IncomingTransferRequest(manifest, new TransferPeer(PeerId, "Laptop", PublicKey, AutoAcceptTransfers: true)),
+            new MemoryStream(new byte[5 + 28]),
+            CancellationToken.None);
+
+        AssertEqual(TransferStatus.Failed, record.Status, "encrypted transfer without configured session encryption fails");
+    }
+
+    private static async Task TestLegacyPlaintextTransferStillWorksAndIsLogged()
+    {
+        var fixture = Fixture(trustState: TrustState.Trusted);
+        var payload = Encoding.UTF8.GetBytes("legacy payload");
+        var manifest = Manifest(size: payload.Length, sha: Fingerprint.Sha256Hex(payload));
+
+        var record = await fixture.Manager.ReceiveFileAsync(
+            new IncomingTransferRequest(manifest, new TransferPeer(PeerId, "Laptop", PublicKey, AutoAcceptTransfers: true)),
+            new MemoryStream(payload),
+            CancellationToken.None);
+
+        AssertEqual(TransferStatus.Completed, record.Status, "legacy plaintext receive still completes");
+        AssertTrue(fixture.AuditLog.List().Any(entry => entry.Type == AuditEventType.LegacyPlaintextTransfer), "legacy plaintext transfer is logged");
+
+        var sendFixture = Fixture(trustState: TrustState.Trusted, sessionEncryption: new SessionEncryptionService(SessionCrypto.GenerateSecretKey()));
+        var transport = new RecordingTransferTransport();
+        var sent = await sendFixture.Manager.SendTextAsync(PeerId, "hello", transport, CancellationToken.None);
+
+        AssertEqual(TransferStatus.Completed, sent.Status, "send to non-X25519 peer falls back to plaintext");
+        AssertTrue(transport.Manifest?.Encryption is null, "fallback envelope has no encryption block");
+        AssertEqual("hello", Encoding.UTF8.GetString(transport.Sink.ToArray()), "fallback payload is plaintext");
+        AssertTrue(sendFixture.AuditLog.List().Any(entry => entry.Type == AuditEventType.LegacyPlaintextTransfer), "plaintext fallback send is logged");
+    }
+
+    private static void TestDpapiProtectorRoundTrip()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Console.WriteLine("SKIP: DPAPI secret protector round trip (Windows only).");
+            return;
+        }
+
+        var protector = new DpapiSecretProtector();
+        var secret = Encoding.UTF8.GetBytes("windows-production-secret");
+        var protectedBytes = protector.Protect(secret);
+
+        AssertFalse(protectedBytes.AsSpan().SequenceEqual(secret), "dpapi protected bytes differ from plaintext");
+        AssertTrue(protector.Unprotect(protectedBytes).AsSpan().SequenceEqual(secret), "dpapi protector round trip");
+    }
+
+    private static void TestProductionProtectorSelection()
+    {
+        var fallbackKey = Enumerable.Repeat((byte)9, 32).ToArray();
+        var protector = SecretProtectorFactory.CreateProductionProtector(fallbackKey);
+        if (OperatingSystem.IsWindows())
+        {
+            AssertTrue(protector is DpapiSecretProtector, "windows production protector is DPAPI backed");
+        }
+        else
+        {
+            AssertTrue(protector is AesLocalSecretProtector, "non-windows production protector falls back to AES");
+        }
+
+        var store = new ProtectedSecretStore(protector);
+        var secret = Encoding.UTF8.GetBytes("production secret material");
+        store.Save("beamdrop.test.secret", secret);
+        AssertTrue(store.Load("beamdrop.test.secret")!.AsSpan().SequenceEqual(secret), "production protector round trip through secret store");
+    }
+
     private static async Task TestClipboardPolicy()
     {
         var fixture = Fixture(trustState: TrustState.Trusted);
@@ -284,7 +626,11 @@ internal sealed class WindowsTests
         AssertTrue(plan.MissingChunks.SequenceEqual(new long[] { 1, 3 }), "resume missing chunks");
     }
 
-    private static TestFixture Fixture(TrustState? trustState, ReceiveDecision approval = ReceiveDecision.Accept)
+    private static TestFixture Fixture(
+        TrustState? trustState,
+        ReceiveDecision approval = ReceiveDecision.Accept,
+        string? peerPublicKey = null,
+        SessionEncryptionService? sessionEncryption = null)
     {
         var audit = new AuditLog();
         var store = new InMemoryTrustedPeerStore();
@@ -294,7 +640,7 @@ internal sealed class WindowsTests
                 DeviceId: PeerId,
                 DeviceName: "Laptop",
                 Platform: BeamDropPlatform.Windows,
-                PublicKeyBase64: PublicKey,
+                PublicKeyBase64: peerPublicKey ?? PublicKey,
                 Fingerprint: "AA BB CC DD EE FF",
                 TrustState: trustState.Value,
                 AutoAcceptTransfers: approval == ReceiveDecision.Accept,
@@ -305,7 +651,29 @@ internal sealed class WindowsTests
                 LastSeenAt: DateTimeOffset.UtcNow));
         }
         var repository = new TrustedPeerRepository(store, audit);
-        var manager = new TransferManager(repository, new InMemoryTransferHistoryStore(), new MemoryReceiveTargetFactory(), new FixedApprovalPrompt(approval), audit);
+        var manager = new TransferManager(repository, new InMemoryTransferHistoryStore(), new MemoryReceiveTargetFactory(), new FixedApprovalPrompt(approval), audit, sessionEncryption: sessionEncryption);
+        return new TestFixture(repository, manager, audit);
+    }
+
+    private static TestFixture ReceiverFixture(string senderDeviceId, string senderPublicKeyBase64, SessionEncryptionService sessionEncryption)
+    {
+        var audit = new AuditLog();
+        var store = new InMemoryTrustedPeerStore();
+        store.Upsert(new TrustedPeer(
+            DeviceId: senderDeviceId,
+            DeviceName: "Sender",
+            Platform: BeamDropPlatform.Windows,
+            PublicKeyBase64: senderPublicKeyBase64,
+            Fingerprint: "AA BB CC DD EE FF",
+            TrustState: TrustState.Trusted,
+            AutoAcceptTransfers: true,
+            EndpointHost: "127.0.0.1",
+            EndpointPort: 49320,
+            TrustedAt: DateTimeOffset.UtcNow,
+            RevokedAt: null,
+            LastSeenAt: DateTimeOffset.UtcNow));
+        var repository = new TrustedPeerRepository(store, audit);
+        var manager = new TransferManager(repository, new InMemoryTransferHistoryStore(), new MemoryReceiveTargetFactory(), new FixedApprovalPrompt(ReceiveDecision.Accept), audit, sessionEncryption: sessionEncryption);
         return new TestFixture(repository, manager, audit);
     }
 
@@ -345,6 +713,18 @@ internal sealed class WindowsTests
 }
 
 internal sealed record TestFixture(TrustedPeerRepository Repository, TransferManager Manager, AuditLog AuditLog);
+
+internal sealed class RecordingTransferTransport : ITransferTransport
+{
+    public TransferManifest? Manifest { get; private set; }
+    public MemoryStream Sink { get; } = new();
+
+    public async Task SendAsync(TransferManifest manifest, Stream payload, IProgress<TransferProgress> progress, CancellationToken cancellationToken)
+    {
+        Manifest = manifest;
+        await payload.CopyToAsync(Sink, cancellationToken);
+    }
+}
 
 internal sealed class FixedApprovalPrompt : IReceiveApprovalPrompt
 {

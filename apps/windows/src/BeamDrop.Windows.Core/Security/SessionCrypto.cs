@@ -37,6 +37,9 @@ public sealed class SessionCrypto
     /// <summary>Raw 32-byte ephemeral public key advertised in the transfer envelope.</summary>
     public byte[] EphemeralPublicKey { get; }
 
+    /// <summary>Derived session key, exposed for conformance tests only.</summary>
+    internal byte[] SessionKey => _sessionKey;
+
     private SessionCrypto(byte[] sessionKey, byte[] ephemeralPublicKey, string senderDeviceId, string receiverDeviceId, string transferId)
     {
         _sessionKey = sessionKey;

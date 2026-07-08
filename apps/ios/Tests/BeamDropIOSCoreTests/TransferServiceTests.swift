@@ -94,6 +94,116 @@ final class TransferServiceTests: XCTestCase {
         }
     }
 
+    func testUnsafeReceivedFileNamesRejected() {
+        let unsafeNames = [
+            "../secret.txt",
+            "..",
+            ".",
+            "",
+            "   ",
+            "/etc/passwd",
+            "nested/../../escape.txt",
+            "sub/dir.txt",
+            "C:\\Windows\\System32\\evil.dll",
+            "back\\slash.txt",
+            "drive:colon.txt",
+            "bell\u{0007}.txt",
+            "newline\n.txt",
+            "escape\u{001B}.txt"
+        ]
+        for name in unsafeNames {
+            XCTAssertFalse(SafeTransferFileName.isSafe(name), "expected \(name.debugDescription) to be rejected")
+        }
+
+        let safeNames = ["notes.txt", "photo 2026.jpg", "über-report.pdf", "..hidden", "a..b.txt", "trailing."]
+        for name in safeNames {
+            XCTAssertTrue(SafeTransferFileName.isSafe(name), "expected \(name.debugDescription) to be accepted")
+        }
+    }
+
+    func testEnvelopeEncryptionBlockRoundTrips() throws {
+        let payload = Data("sealed".utf8)
+        let ephemeralKeyHex = String(repeating: "ab", count: 32)
+        let envelope = TransferEnvelope(
+            transferId: "tx-encrypted",
+            transferType: .file,
+            senderDeviceId: "bd-ios-01",
+            senderPublicKey: "ios-public-key",
+            receiverDeviceId: "bd-android-01",
+            encryption: TransferEncryption(ephemeralPublicKey: ephemeralKeyHex),
+            payloadMetadata: TransferPayloadMetadata(
+                fileName: "notes.txt",
+                mimeType: "text/plain",
+                sizeBytes: Int64(payload.count),
+                sha256: Fingerprint.sha256Hex(data: payload)
+            )
+        )
+
+        let decoded = try TransferEnvelopeCodec.decode(try TransferEnvelopeCodec.encode(envelope))
+
+        XCTAssertEqual(decoded.encryption?.scheme, TransferEncryption.sessionV1Scheme)
+        XCTAssertEqual(decoded.encryption?.ephemeralPublicKey, ephemeralKeyHex)
+    }
+
+    func testEnvelopeWithoutEncryptionBlockRemainsLegacyPlaintext() throws {
+        let payload = Data("legacy".utf8)
+        let envelope = TransferEnvelope(
+            transferId: "tx-legacy",
+            transferType: .text,
+            senderDeviceId: "bd-ios-01",
+            senderPublicKey: "ios-public-key",
+            receiverDeviceId: "bd-android-01",
+            payloadMetadata: TransferPayloadMetadata(
+                fileName: "Text",
+                mimeType: "text/plain",
+                sizeBytes: Int64(payload.count),
+                sha256: Fingerprint.sha256Hex(data: payload)
+            )
+        )
+
+        let encoded = try TransferEnvelopeCodec.encode(envelope)
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("encryption"))
+        XCTAssertNil(try TransferEnvelopeCodec.decode(encoded).encryption)
+    }
+
+    func testEnvelopeRejectsUnknownEncryptionScheme() throws {
+        var envelope = encryptedEnvelope()
+        envelope.encryption = TransferEncryption(scheme: "ROT13", ephemeralPublicKey: String(repeating: "ab", count: 32))
+
+        XCTAssertThrowsError(try TransferEnvelopeCodec.validate(envelope)) { error in
+            XCTAssertEqual(error as? TransferEnvelopeError, .unsupportedEncryptionScheme)
+        }
+    }
+
+    func testEnvelopeRejectsMalformedEphemeralKey() throws {
+        for badKey in ["", "abcd", String(repeating: "zz", count: 32), String(repeating: "ab", count: 33)] {
+            var envelope = encryptedEnvelope()
+            envelope.encryption = TransferEncryption(ephemeralPublicKey: badKey)
+
+            XCTAssertThrowsError(try TransferEnvelopeCodec.validate(envelope), badKey) { error in
+                XCTAssertEqual(error as? TransferEnvelopeError, .invalidEphemeralPublicKey)
+            }
+        }
+    }
+
+    private func encryptedEnvelope() -> TransferEnvelope {
+        let payload = Data("sealed".utf8)
+        return TransferEnvelope(
+            transferId: "tx-encrypted",
+            transferType: .file,
+            senderDeviceId: "bd-ios-01",
+            senderPublicKey: "ios-public-key",
+            receiverDeviceId: "bd-android-01",
+            encryption: TransferEncryption(ephemeralPublicKey: String(repeating: "ab", count: 32)),
+            payloadMetadata: TransferPayloadMetadata(
+                fileName: "notes.txt",
+                mimeType: "text/plain",
+                sizeBytes: Int64(payload.count),
+                sha256: Fingerprint.sha256Hex(data: payload)
+            )
+        )
+    }
+
     func testUnknownAndRevokedPeersRejected() throws {
         let service = try transferService(peer: nil)
         XCTAssertThrowsError(try service.requireTrusted(deviceId: "unknown", publicKey: "key"))

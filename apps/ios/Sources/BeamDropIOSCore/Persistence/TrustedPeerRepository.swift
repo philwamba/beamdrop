@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TrustedPeer: Codable, Equatable, Identifiable, Sendable {
+public struct TrustedPeer: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var id: String { deviceId }
     public var deviceId: String
     public var deviceName: String

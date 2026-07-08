@@ -48,7 +48,7 @@ public enum TransferDirection: String, Codable, Equatable, Sendable {
     case received = "Received"
 }
 
-public struct EndpointHint: Codable, Equatable, Sendable {
+public struct EndpointHint: Codable, Equatable, Hashable, Sendable {
     public var host: String?
     public var port: Int?
     public var route: String
