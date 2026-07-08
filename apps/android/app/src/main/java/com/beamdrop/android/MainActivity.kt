@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -270,6 +271,19 @@ private fun BeamDropApp(
         history = historyStore.list()
     }
 
+    fun goBack() {
+        screen = when (screen) {
+            Screen.Home -> Screen.Home
+            Screen.DeviceDetail -> Screen.Devices
+            Screen.Privacy, Screen.Diagnostics, Screen.About -> Screen.Settings
+            else -> Screen.Home
+        }
+    }
+
+    BackHandler(enabled = screen != Screen.Home) {
+        goBack()
+    }
+
     when (screen) {
         Screen.Home -> HomeScreen(
             identity = identity,
@@ -308,12 +322,12 @@ private fun BeamDropApp(
         )
 
         Screen.Onboarding -> OnboardingScreen(
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
             onPair = { screen = Screen.Pair },
         )
 
         Screen.Nearby -> NearbyDevicesScreen(
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
             onPair = { screen = Screen.Pair },
             onDiagnostics = { screen = Screen.Diagnostics },
         )
@@ -329,7 +343,7 @@ private fun BeamDropApp(
                     ),
                 )
             },
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
             onRefresh = { refreshPairing++ },
             onScan = { screen = Screen.Scan },
         )
@@ -343,7 +357,7 @@ private fun BeamDropApp(
             },
             onBack = {
                 reloadPeers()
-                screen = Screen.Home
+                goBack()
             },
             onTrusted = {
                 reloadPeers()
@@ -353,7 +367,13 @@ private fun BeamDropApp(
 
         Screen.Devices -> TrustedDevicesScreen(
             peers = peers,
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
+            onHome = { screen = Screen.Home },
+            onHistory = {
+                reloadHistory()
+                screen = Screen.History
+            },
+            onSettings = { screen = Screen.Settings },
             onRevoke = {
                 trustedPeerRepository.revoke(it)
                 reloadPeers()
@@ -367,7 +387,7 @@ private fun BeamDropApp(
 
         Screen.DeviceDetail -> DeviceDetailScreen(
             peer = selectedDevice,
-            onBack = { screen = Screen.Devices },
+            onBack = ::goBack,
             onRevoke = {
                 selectedDevice?.let { trustedPeerRepository.revoke(it.deviceId) }
                 reloadPeers()
@@ -376,12 +396,12 @@ private fun BeamDropApp(
         )
 
         Screen.Permissions -> PermissionExplanationScreen(
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
         )
 
         Screen.SendText -> SendTextScreen(
             peers = peers,
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
             onSendText = { peer, text ->
                 transferManager.sendText(peer, text)
                 reloadHistory()
@@ -397,7 +417,7 @@ private fun BeamDropApp(
         Screen.SendFile -> SendFileScreen(
             peers = peers,
             transferManager = transferManager,
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
             onProgress = { progress = it },
             onDone = {
                 reloadHistory()
@@ -408,7 +428,10 @@ private fun BeamDropApp(
         Screen.History -> TransferHistoryScreen(
             history = history,
             progress = progress,
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
+            onHome = { screen = Screen.Home },
+            onDevices = { screen = Screen.Devices },
+            onSettings = { screen = Screen.Settings },
             onCancel = {
                 transferManager.cancelTransfer(it)
                 reloadHistory()
@@ -416,21 +439,27 @@ private fun BeamDropApp(
         )
 
         Screen.Settings -> SettingsScreen(
-            onBack = { screen = Screen.Home },
+            onBack = ::goBack,
+            onHome = { screen = Screen.Home },
+            onDevices = { screen = Screen.Devices },
+            onHistory = {
+                reloadHistory()
+                screen = Screen.History
+            },
             onPrivacy = { screen = Screen.Privacy },
             onDiagnostics = { screen = Screen.Diagnostics },
             onPermissions = { screen = Screen.Permissions },
             onAbout = { screen = Screen.About },
         )
 
-        Screen.Privacy -> PrivacyScreen(onBack = { screen = Screen.Settings })
+        Screen.Privacy -> PrivacyScreen(onBack = ::goBack)
 
         Screen.Diagnostics -> NetworkDiagnosticsScreen(
-            onBack = { screen = Screen.Settings },
+            onBack = ::goBack,
             onPair = { screen = Screen.Pair },
         )
 
-        Screen.About -> AboutScreen(onBack = { screen = Screen.Settings })
+        Screen.About -> AboutScreen(onBack = ::goBack)
     }
 }
 
