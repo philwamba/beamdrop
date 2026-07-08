@@ -12,6 +12,14 @@ All notable BeamDrop changes are tracked here.
   missing instead of falling back to the Android debug certificate.
 - Android APK metadata now uses the repository `VERSION` for `versionName` and a
   monotonically increasing version code derived from the release version.
+- Android now sends a reciprocal `PAIRING_REQUEST` after approving a scanned QR
+  code, allowing macOS to show an approval prompt and trust the Android device
+  before transfers.
+- macOS now handles incoming `PAIRING_REQUEST` payloads through an explicit
+  trust approval dialog instead of rejecting them as unknown-device transfers.
+- Android release APKs now use R8/resource shrinking and exclude unused bundled
+  BouncyCastle resources, reducing the internal APK from about 16 MB to about
+  2.5 MB.
 - Added a local-only helper for generating an ignored internal Android release
   keystore for sideload QA builds.
 - GitHub release workflow now requires Android release signing secrets before it
