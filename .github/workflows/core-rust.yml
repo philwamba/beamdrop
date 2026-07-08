@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Test Rust workspace
+      - name: Test Rust workspace and validate protocol schemas
         working-directory: core/beamdrop-core
         run: cargo test --workspace
 
