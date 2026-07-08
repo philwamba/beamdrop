@@ -11,6 +11,13 @@ All notable BeamDrop changes are tracked here.
   transfers interoperate on all platform pairs. Windows and macOS were updated
   to match the framing already used by Android and iPhone; receivers validate
   each frame length against the manifest before decrypting.
+- Android QR scanning is more tolerant of camera frame orientation and luminance
+  layout, and the scanner now enters the ready state automatically when camera
+  permission was already granted.
+- Android top-level navigation is consistent again: Home uses the same four-item
+  bottom bar as Devices, History, and Settings.
+- Android theme colors now follow the BeamDrop logo's blue/cyan palette instead
+  of the temporary green palette.
 
 ## 0.1.0-internal.5 - 2026-07-08
 

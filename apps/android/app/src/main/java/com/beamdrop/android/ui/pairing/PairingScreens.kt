@@ -44,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,6 +74,7 @@ import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
+import com.google.zxing.common.GlobalHistogramBinarizer
 import com.google.zxing.common.HybridBinarizer
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -175,6 +177,12 @@ internal fun ScanQrScreen(
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         cameraGrant = if (granted) RuntimePermissionGrant.Granted else RuntimePermissionGrant.Denied
         if (granted) {
+            controller.markCameraReady()
+            state = controller.state
+        }
+    }
+    LaunchedEffect(cameraGrant) {
+        if (cameraGrant == RuntimePermissionGrant.Granted && state == ScanQrUiState.NeedsCameraPermissionExplanation) {
             controller.markCameraReady()
             state = controller.state
         }
@@ -331,10 +339,13 @@ private fun QrCameraScanner(
                         .build()
                         .also { imageAnalysis ->
                             imageAnalysis.setAnalyzer(executor) { image ->
-                                val result = decodeQrCode(image)
-                                image.close()
-                                if (result != null && didScan.compareAndSet(false, true)) {
-                                    Handler(Looper.getMainLooper()).post { onQrCode(result) }
+                                try {
+                                    val result = decodeQrCode(image)
+                                    if (result != null && didScan.compareAndSet(false, true)) {
+                                        Handler(Looper.getMainLooper()).post { onQrCode(result) }
+                                    }
+                                } finally {
+                                    image.close()
                                 }
                             }
                         }
@@ -359,30 +370,43 @@ private fun QrCameraScanner(
 }
 
 private fun decodeQrCode(image: ImageProxy): String? {
-    val luminance = image.toLuminanceBytes()
+    val frame = image.toLuminanceFrame()
+    return sequenceOf(
+        frame,
+        frame.rotateClockwise(),
+        frame.rotateClockwise().rotateClockwise(),
+        frame.rotateCounterClockwise(),
+    ).firstNotNullOfOrNull { decodeQrFrame(it) }
+}
+
+private fun decodeQrFrame(frame: LuminanceFrame): String? {
     val source = PlanarYUVLuminanceSource(
-        luminance,
-        image.width,
-        image.height,
+        frame.bytes,
+        frame.width,
+        frame.height,
         0,
         0,
-        image.width,
-        image.height,
+        frame.width,
+        frame.height,
         false,
     )
-    val bitmap = BinaryBitmap(HybridBinarizer(source))
     val reader = MultiFormatReader().apply {
         setHints(
             mapOf(
                 DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
                 DecodeHintType.TRY_HARDER to true,
+                DecodeHintType.CHARACTER_SET to "UTF-8",
             ),
         )
     }
     return try {
-        reader.decode(bitmap).text
+        reader.decode(BinaryBitmap(HybridBinarizer(source))).text
     } catch (_: NotFoundException) {
-        null
+        try {
+            reader.decode(BinaryBitmap(GlobalHistogramBinarizer(source))).text
+        } catch (_: NotFoundException) {
+            null
+        }
     } catch (error: Exception) {
         Log.w("BeamDropQrScanner", "QR decode failed: ${error.message}")
         null
@@ -391,27 +415,57 @@ private fun decodeQrCode(image: ImageProxy): String? {
     }
 }
 
-private fun ImageProxy.toLuminanceBytes(): ByteArray {
+private data class LuminanceFrame(
+    val bytes: ByteArray,
+    val width: Int,
+    val height: Int,
+) {
+    fun rotateClockwise(): LuminanceFrame {
+        val rotated = ByteArray(bytes.size)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                rotated[x * height + (height - y - 1)] = bytes[y * width + x]
+            }
+        }
+        return LuminanceFrame(rotated, height, width)
+    }
+
+    fun rotateCounterClockwise(): LuminanceFrame {
+        val rotated = ByteArray(bytes.size)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                rotated[(width - x - 1) * height + y] = bytes[y * width + x]
+            }
+        }
+        return LuminanceFrame(rotated, height, width)
+    }
+}
+
+private fun ImageProxy.toLuminanceFrame(): LuminanceFrame {
     val plane = planes.first()
     val buffer = plane.buffer
     val rowStride = plane.rowStride
     val pixelStride = plane.pixelStride
     val data = ByteArray(width * height)
+    if (pixelStride == 1 && rowStride == width) {
+        buffer.rewind()
+        buffer.get(data, 0, minOf(data.size, buffer.remaining()))
+        return LuminanceFrame(data, width, height)
+    }
+
     val row = ByteArray(rowStride)
     var outputOffset = 0
-
     for (y in 0 until height) {
         buffer.position(y * rowStride)
         val bytesToRead = minOf(rowStride, buffer.remaining())
         buffer.get(row, 0, bytesToRead)
-        var inputOffset = 0
         for (x in 0 until width) {
-            data[outputOffset++] = row[inputOffset]
-            inputOffset += pixelStride
+            val inputOffset = x * pixelStride
+            data[outputOffset++] = if (inputOffset < bytesToRead) row[inputOffset] else 0
         }
     }
 
-    return data
+    return LuminanceFrame(data, width, height)
 }
 
 @Composable

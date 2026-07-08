@@ -18,8 +18,6 @@ import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.QrCode
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -50,6 +48,8 @@ import com.beamdrop.android.core.pairing.Fingerprint
 import com.beamdrop.android.core.pairing.TrustState
 import com.beamdrop.android.core.pairing.TrustedPeer
 import com.beamdrop.android.core.transfer.TransferHistoryRecord
+import com.beamdrop.android.navigation.BeamDropDestination
+import com.beamdrop.android.ui.components.BeamDropBottomBar
 import com.beamdrop.android.ui.components.EmptyDevices
 import com.beamdrop.android.ui.components.HistoryRow
 import com.beamdrop.android.ui.components.PeerRow
@@ -86,9 +86,11 @@ internal fun HomeScreen(
     }
     Scaffold(
         bottomBar = {
-            HomeActionDock(
-                onReceive = onPair,
-                onSend = onSendText,
+            BeamDropBottomBar(
+                current = BeamDropDestination.Home,
+                onHome = {},
+                onDevices = onDevices,
+                onHistory = onHistory,
                 onSettings = onSettings,
             )
         },
@@ -283,72 +285,6 @@ internal fun HomeScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun HomeActionDock(
-    onReceive: () -> Unit,
-    onSend: () -> Unit,
-    onSettings: () -> Unit,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HomeDockItem(
-                selected = true,
-                icon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
-                label = "Receive",
-                onClick = onReceive,
-            )
-            HomeDockItem(
-                selected = false,
-                icon = { Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null) },
-                label = "Send",
-                onClick = onSend,
-            )
-            HomeDockItem(
-                selected = false,
-                icon = { Icon(Icons.Outlined.Security, contentDescription = null) },
-                label = "Settings",
-                onClick = onSettings,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeDockItem(
-    selected: Boolean,
-    icon: @Composable () -> Unit,
-    label: String,
-    onClick: () -> Unit,
-) {
-    TextButton(onClick = onClick) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                color = if (selected) {
-                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f)
-                },
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) {
-                    icon()
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

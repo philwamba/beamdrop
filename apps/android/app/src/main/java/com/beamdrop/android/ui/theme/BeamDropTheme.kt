@@ -13,21 +13,21 @@ internal fun BeamDropTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (dark) {
             darkColorScheme(
-                primary = Color(0xFF7EDDCB),
-                secondary = Color(0xFF4FB7A5),
-                tertiary = Color(0xFFFFD28A),
-                surface = Color(0xFF111318),
-                surfaceVariant = Color(0xFF1E302D),
-                background = Color(0xFF07110F),
+                primary = Color(0xFF80C7FF),
+                secondary = Color(0xFF53D3FF),
+                tertiary = Color(0xFF9BB7FF),
+                surface = Color(0xFF101419),
+                surfaceVariant = Color(0xFF1E2B36),
+                background = Color(0xFF081018),
             )
         } else {
             lightColorScheme(
-                primary = Color(0xFF00796B),
-                secondary = Color(0xFF0B6F61),
-                tertiary = Color(0xFF7A4D00),
+                primary = Color(0xFF0B7FEB),
+                secondary = Color(0xFF23B9F2),
+                tertiary = Color(0xFF2457C5),
                 surface = Color(0xFFFAFBFD),
-                surfaceVariant = Color(0xFFE4F1EE),
-                background = Color(0xFFF7FAF9),
+                surfaceVariant = Color(0xFFE4F2FF),
+                background = Color(0xFFF6FAFF),
             )
         },
         content = content,
